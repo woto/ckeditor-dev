@@ -9,6 +9,7 @@
 	/**
 	 * A lightweight representation of HTML node.
 	 *
+	 * @since 4.1
 	 * @class
 	 * @constructor Creates a node class instance.
 	 */
@@ -17,6 +18,8 @@
 	CKEDITOR.htmlParser.node.prototype = {
 		/**
 		 * Remove this node from a tree.
+		 *
+		 * @since 4.1
 		 */
 		remove: function() {
 			var children = this.parent.children,
@@ -33,6 +36,7 @@
 		/**
 		 * Replace this node with given one.
 		 *
+		 * @since 4.1
 		 * @param {CKEDITOR.htmlParser.node} node The node that will replace this one.
 		 */
 		replaceWith: function( node ) {
@@ -53,6 +57,7 @@
 		/**
 		 * Insert this node after given one.
 		 *
+		 * @since 4.1
 		 * @param {CKEDITOR.htmlParser.node} node The node that will precede this element.
 		 */
 		insertAfter: function( node ) {
@@ -66,6 +71,26 @@
 			this.previous = node;
 			node.next = this;
 			next && ( next.previous = this );
+
+			this.parent = node.parent;
+		},
+
+		/**
+		 * Insert this node before given one.
+		 *
+		 * @since 4.1
+		 * @param {CKEDITOR.htmlParser.node} node The node that will follow this element.
+		 */
+		insertBefore: function( node ) {
+			var children = node.parent.children,
+				index = CKEDITOR.tools.indexOf( children, node );
+
+			children.splice( index, 0, this );
+
+			this.next = node;
+			this.previous = node.previous;
+			node.previous && ( node.previous.next = this );
+			node.previous = this;
 
 			this.parent = node.parent;
 		}

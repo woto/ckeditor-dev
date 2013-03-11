@@ -279,13 +279,18 @@ CKEDITOR.plugins.add( 'dialogui', {
 				attributes.rows = elementDefinition.rows || 5;
 				attributes.cols = elementDefinition.cols || 20;
 
+				attributes[ 'class' ] = 'cke_dialog_ui_input_textarea ' + ( elementDefinition[ 'class' ] || '' );
+
 				if ( typeof elementDefinition.inputStyle != 'undefined' )
 					attributes.style = elementDefinition.inputStyle;
+
+				if ( elementDefinition.dir )
+					attributes.dir = elementDefinition.dir;
 
 				var innerHTML = function() {
 						attributes[ 'aria-labelledby' ] = this._.labelId;
 						this._.required && ( attributes[ 'aria-required' ] = this._.required );
-						var html = [ '<div class="cke_dialog_ui_input_textarea" role="presentation"><textarea class="cke_dialog_ui_input_textarea" id="', domId, '" ' ];
+						var html = [ '<div class="cke_dialog_ui_input_textarea" role="presentation"><textarea id="', domId, '" ' ];
 						for ( var i in attributes )
 							html.push( i + '="' + CKEDITOR.tools.htmlEncode( attributes[ i ] ) + '" ' );
 						html.push( '>', CKEDITOR.tools.htmlEncode( me._[ 'default' ] ), '</textarea></div>' );
@@ -1309,7 +1314,7 @@ CKEDITOR.plugins.add( 'dialogui', {
 			/**
 			 * Defines the onChange event for UI element definitions.
 			 *
-			 * @propert {Object}
+			 * @property {Object}
 			 */
 			eventProcessors: {
 				onChange: function( dialog, func ) {

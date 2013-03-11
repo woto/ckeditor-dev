@@ -59,14 +59,17 @@ CKEDITOR.htmlParser.fragment = function() {
 	 * @static
 	 * @param {String} fragmentHtml The HTML to be parsed, filling the fragment.
 	 * @param {CKEDITOR.htmlParser.element/String} [parent] Optional contextual
-	 * element which makes the content been parsed as the content of this element.
+	 * element which makes the content been parsed as the content of this element and fix
+	 * to match it.
+	 * If not provided, then {@link CKEDITOR.htmlParser.fragment} will be used
+	 * as the parent and it will be returned.
 	 * @param {String/Boolean} [fixingBlock] When `parent` is a block limit element,
 	 * and the param is a string value other than `false`, it is to
 	 * avoid having block-less content as the direct children of parent by wrapping
 	 * the content with a block element of the specified tag, e.g.
 	 * when `fixingBlock` specified as `p`, the content `<body><i>foo</i></body>`
 	 * will be fixed into `<body><p><i>foo</i></p></body>`.
-	 * @returns CKEDITOR.htmlParser.fragment The fragment created.
+	 * @returns {CKEDITOR.htmlParser.fragment/CKEDITOR.htmlParser.element} The created fragment or passed `parent`.
 	 */
 	CKEDITOR.htmlParser.fragment.fromHtml = function( fragmentHtml, parent, fixingBlock ) {
 		var parser = new CKEDITOR.htmlParser();
@@ -486,6 +489,7 @@ CKEDITOR.htmlParser.fragment = function() {
 		/**
 		 * Filter this fragment's content with given filter.
 		 *
+		 * @since 4.1
 		 * @param {CKEDITOR.htmlParser.filter} filter
 		 */
 		filter: function( filter ) {
@@ -501,6 +505,7 @@ CKEDITOR.htmlParser.fragment = function() {
 		 * Element's children may only be filtered once by one
 		 * instance of filter.
 		 *
+		 * @since 4.1
 		 * @param {CKEDITOR.htmlParser.filter} filter
 		 * @param {Boolean} [filterRoot] Whether to apply the "root" filter rule specified in the `filter`.
 		 */
@@ -581,6 +586,7 @@ CKEDITOR.htmlParser.fragment = function() {
 		 *		// 5. "bar" text node,
 		 *		// 6. "bom" text node.
 		 *
+		 * @since 4.1
 		 * @param {Function} callback Function to be executed on every node.
 		 * @param {CKEDITOR.htmlParser.node} callback.node Node passed as argument.
 		 * @param {Number} [type] If specified `callback` will be executed only on nodes of this type.

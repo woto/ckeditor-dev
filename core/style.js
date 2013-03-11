@@ -1406,14 +1406,25 @@ CKEDITOR.STYLE_OBJECT = 3;
 })();
 
 /**
+ * Generic style command. It applies a specific style when executed.
+ *
+ *		var boldStyle = new CKEDITOR.style( { element: 'strong' } );
+ *		// Register the "bold" command, which applies the bold style.
+ *		editor.addCommand( 'bold', new CKEDITOR.dialogCommand( boldStyle ) );
+ *
  * @class
- * @todo
+ * @constructor Creates a styleCommand class instance.
+ * @extends CKEDITOR.commandDefinition
+ * @param {CKEDITOR.style} style The style to be applied when command is executed.
+ * @param {Object} [ext] Additional command definition's properties.
  */
-CKEDITOR.styleCommand = function( style ) {
+CKEDITOR.styleCommand = function( style, ext ) {
 	this.style = style;
 	// TODO shouldn't we create content def only when explicitly requested (by argument)?
 	this.allowedContent = style;
 	this.requiredContent = style;
+
+	CKEDITOR.tools.extend( this, ext, true );
 };
 
 /**
@@ -1474,13 +1485,22 @@ CKEDITOR.loadStylesSet = function( name, url, callback ) {
  *
  *		editor.getStylesSet( function( stylesDefinitions ) {} );
  *
+ * See also {@link CKEDITOR.editor#stylesSet} event.
+ *
  * @param {Function} callback The function to be called with the styles data.
+ * @member CKEDITOR.editor
  */
 CKEDITOR.editor.prototype.getStylesSet = function( callback ) {
 	if ( !this._.stylesDefinitions ) {
 		var editor = this,
 			// Respect the backwards compatible definition entry
-			configStyleSet = editor.config.stylesCombo_stylesSet || editor.config.stylesSet || 'default';
+			configStyleSet = editor.config.stylesCombo_stylesSet || editor.config.stylesSet;
+
+		// The false value means that none styles should be loaded.
+		if ( configStyleSet === false ) {
+			callback( null );
+			return;
+		}
 
 		// #5352 Allow to define the styles directly in the config object
 		if ( configStyleSet instanceof Array ) {
@@ -1488,6 +1508,10 @@ CKEDITOR.editor.prototype.getStylesSet = function( callback ) {
 			callback( configStyleSet );
 			return;
 		}
+
+		// Default value is 'default'.
+		if ( !configStyleSet )
+			configStyleSet = 'default';
 
 		var partsStylesSet = configStyleSet.split( ':' ),
 			styleSetName = partsStylesSet[ 0 ],
@@ -1535,18 +1559,24 @@ CKEDITOR.editor.prototype.getStylesSet = function( callback ) {
  *
  * The styles may be defined in the page containing the editor, or can be
  * loaded on demand from an external file. In the second case, if this setting
- * contains only a name, the styles definition file will be loaded from the
- * `styles` folder inside the styles plugin folder.
+ * contains only a name, the `styles.js` file will be loaded from the
+ * CKEditor root folder (what ensures backward compatibility with CKEditor 4.0).
  *
  * Otherwise, this setting has the `name:url` syntax, making it
  * possible to set the URL from which loading the styles file.
+ * Note that the `name` has to be equal to the name used in
+ * {@link CKEDITOR.stylesSet#add} while registering styles set.
  *
- * Previously this setting was available as `config.stylesCombo_stylesSet`.
+ * **Note**: Since 4.1 it is possible to set `stylesSet` to `false`
+ * to prevent loading any styles set.
  *
- *		// Load from the styles' styles folder (mystyles.js file).
+ *		// Do not load any file. Styles set is empty.
+ *		config.stylesSet = false;
+ *
+ *		// Load the 'mystyles' styles set from styles.js file.
  *		config.stylesSet = 'mystyles';
  *
- *		// Load from a relative URL.
+ *		// Load the 'mystyles' styles set from a relative URL.
  *		config.stylesSet = 'mystyles:/editorstyles/styles.js';
  *
  *		// Load from a full URL.
@@ -1560,6 +1590,6 @@ CKEDITOR.editor.prototype.getStylesSet = function( callback ) {
  *		];
  *
  * @since 3.3
- * @cfg {String/Array} [stylesSet='default']
+ * @cfg {String/Array/Boolean} [stylesSet='default']
  * @member CKEDITOR.config
  */

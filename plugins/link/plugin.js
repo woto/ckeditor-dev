@@ -48,13 +48,21 @@ CKEDITOR.plugins.add( 'link', {
 	},
 
 	init: function( editor ) {
+		var allowed = 'a[!href]',
+			required = 'a[href]';
+
+		if ( CKEDITOR.dialog.isTabEnabled( editor, 'link', 'advanced' ) )
+			allowed = allowed.replace( ']', ',accesskey,charset,dir,id,lang,name,rel,tabindex,title,type]{*}(*)' );
+		if ( CKEDITOR.dialog.isTabEnabled( editor, 'link', 'target' ) )
+			allowed = allowed.replace( ']', ',target,onclick]' );
+
 		// Add the link and unlink buttons.
 		editor.addCommand( 'link', new CKEDITOR.dialogCommand( 'link', {
-			allowedContent: 'a[accesskey,charset,dir,href,id,lang,name,rel,tabindex,target,title,type](*){*}',
-			requiredContent: 'a[href]'
+			allowedContent: allowed,
+			requiredContent: required
 		} ) );
 		editor.addCommand( 'anchor', new CKEDITOR.dialogCommand( 'anchor', {
-			allowedContent: 'a[name]',
+			allowedContent: 'a[!name,id]',
 			requiredContent: 'a[name]'
 		} ) );
 		editor.addCommand( 'unlink', new CKEDITOR.unlinkCommand() );
