@@ -561,7 +561,7 @@
 									children: [
 										{
 										type: 'text',
-										width: '40px',
+										width: '45px',
 										id: 'txtWidth',
 										label: editor.lang.common.width,
 										onKeyUp: onSizeChange,
@@ -602,7 +602,7 @@
 										{
 										type: 'text',
 										id: 'txtHeight',
-										width: '40px',
+										width: '45px',
 										label: editor.lang.common.height,
 										onKeyUp: onSizeChange,
 										onChange: function() {
@@ -981,6 +981,7 @@
 						{
 						id: 'cmbTarget',
 						type: 'select',
+						requiredContent: 'a[target]',
 						label: editor.lang.common.target,
 						'default': '',
 						items: [

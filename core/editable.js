@@ -600,12 +600,7 @@
 							// BACKSPACE/DEL pressed at the start/end of table cell.
 							else if ( ( parent = path.contains( [ 'td', 'th', 'caption' ] ) ) &&
 								      range.checkBoundaryOfElement( parent, rtl ? CKEDITOR.START : CKEDITOR.END ) ) {
-								next = parent[ rtl ? 'getPreviousSourceNode' : 'getNextSourceNode' ]( 1, CKEDITOR.NODE_ELEMENT );
-								if ( next && !next.isReadOnly() && range.root.contains( next ) ) {
-									range[ rtl ? 'moveToElementEditEnd' : 'moveToElementEditStart' ]( next );
-									range.select();
-									isHandled = 1;
-								}
+								isHandled = 1;
 							}
 						}
 
@@ -927,11 +922,13 @@
 			// editable is instead handled by plugin.
 			if ( editable && editable.isInline() ) {
 
-				var ariaLabel = this.lang.editor + ', ' + this.name;
+				var ariaLabel = editor.title;
 
 				editable.changeAttr( 'role', 'textbox' );
 				editable.changeAttr( 'aria-label', ariaLabel );
-				editable.changeAttr( 'title', ariaLabel );
+
+				if ( ariaLabel )
+					editable.changeAttr( 'title', ariaLabel );
 
 				// Put the voice label in different spaces, depending on element mode, so
 				// the DOM element get auto detached on mode reload or editor destroy.

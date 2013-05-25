@@ -149,7 +149,7 @@
 			// We can't simply remove the filling node because the user
 			// will actually enlarge it when typing, so we just remove the
 			// invisible char from it.
-			fillingChar.setText( fillingChar.getText().replace( /\u200B/g, '' ) );
+			fillingChar.setText( replaceFillingChar( fillingChar.getText() ) );
 
 			// Restore the bookmark.
 			if ( bm ) {
@@ -162,6 +162,13 @@
 		}
 	}
 
+	function replaceFillingChar( html ) {
+		return html.replace( /\u200B( )?/g, function( match ) {
+			// #10291 if filling char is followed by a space replace it with nbsp.
+			return match[ 1 ] ? '\xa0' : '';
+		} );
+	}
+
 	function isReversedSelection( sel ) {
 		if ( !sel.isCollapsed ) {
 			var range = sel.getRangeAt( 0 );
@@ -170,6 +177,44 @@
 			range.setEnd( sel.focusNode, sel.focusOffset );
 			return range.collapsed;
 		}
+	}
+
+	// Read the comments in selection constructor.
+	function fixInitialSelection( root, nativeSel, doFocus ) {
+		// It may happen that setting proper selection will
+		// cause focus to be fired (even without actually focusing root).
+		// Cancel it because focus shouldn't be fired when retriving selection. (#10115)
+		var listener = root.on( 'focus', function( evt ) {
+			evt.cancel();
+		}, null, null, -100 );
+
+		// FF && Webkit.
+		if ( !CKEDITOR.env.ie ) {
+			var range = new CKEDITOR.dom.range( root );
+			range.moveToElementEditStart( root );
+
+			var nativeRange = root.getDocument().$.createRange();
+			nativeRange.setStart( range.startContainer.$, range.startOffset );
+			nativeRange.collapse( 1 );
+
+			nativeSel.removeAllRanges();
+			nativeSel.addRange( nativeRange );
+		}
+		else {
+			// IE in specific case may also fire selectionchange.
+			// We cannot block bubbling selectionchange, so at least we
+			// can prevent from falling into inf recursion caused by fix for #9699
+			// (see wysiwygarea plugin).
+			// http://dev.ckeditor.com/ticket/10438#comment:13
+			var listener2 = root.getDocument().on( 'selectionchange', function( evt ) {
+				evt.cancel();
+			}, null, null, -100 );
+		}
+
+		doFocus && root.focus();
+
+		listener.removeListener();
+		listener2 && listener2.removeListener();
 	}
 
 	// Setup all editor instances for the necessary selection hooks.
@@ -410,7 +455,7 @@
 
 			if ( CKEDITOR.env.webkit ) {
 				// Before keystroke is handled by editor, check to remove the filling char.
-				doc.on( 'keydown', function( evt ) {
+				editable.attachListener( doc, 'keydown', function( evt ) {
 					var key = evt.data.getKey();
 					// Remove the filling char before some keys get
 					// executed, so they'll not get blocked by it.
@@ -425,7 +470,7 @@
 						case 8: // BACKSPACE
 						case 45: // INS
 						case 46: // DEl
-							removeFillingChar( editor.editable() );
+							removeFillingChar( editable );
 					}
 
 				}, null, null, -1 );
@@ -460,46 +505,51 @@
 	});
 
 	CKEDITOR.on( 'instanceReady', function( evt ) {
-		var editor = evt.editor,
-			editable = editor.editable();
+		var editor = evt.editor;
 
 		// On WebKit only, we need a special "filling" char on some situations
 		// (#1272). Here we set the events that should invalidate that char.
 		if ( CKEDITOR.env.webkit ) {
 			editor.on( 'selectionChange', function() {
-				checkFillingChar( editable );
+				checkFillingChar( editor.editable() );
 			}, null, null, -1 );
 			editor.on( 'beforeSetMode', function() {
-				removeFillingChar( editable );
+				removeFillingChar( editor.editable() );
 			}, null, null, -1 );
 
 			var fillingCharBefore, resetSelection;
 
 			function beforeData() {
-				var doc = editor.document,
-					fillingChar = getFillingChar( editable );
+				var editable = editor.editable();
+				if ( !editable )
+					return;
+
+				var fillingChar = getFillingChar( editable );
 
 				if ( fillingChar ) {
 					// If cursor is right blinking by side of the filler node, save it for restoring,
 					// as the following text substitution will blind it. (#7437)
-					var sel = doc.$.defaultView.getSelection();
+					var sel = editor.document.$.defaultView.getSelection();
 					if ( sel.type == 'Caret' && sel.anchorNode == fillingChar.$ )
 						resetSelection = 1;
 
 					fillingCharBefore = fillingChar.getText();
-					fillingChar.setText( fillingCharBefore.replace( /\u200B/g, '' ) );
+					fillingChar.setText( replaceFillingChar( fillingCharBefore ) );
 				}
 			}
 
 			function afterData() {
-				var doc = editor.document,
-					fillingChar = getFillingChar( editable );
+				var editable = editor.editable();
+				if ( !editable )
+					return;
+
+				var fillingChar = getFillingChar( editable );
 
 				if ( fillingChar ) {
 					fillingChar.setText( fillingCharBefore );
 
 					if ( resetSelection ) {
-						doc.$.defaultView.getSelection().setPosition( fillingChar.$, fillingChar.getLength() );
+						editor.document.$.defaultView.getSelection().setPosition( fillingChar.$, fillingChar.getLength() );
 						resetSelection = 0;
 					}
 				}
@@ -510,7 +560,6 @@
 			editor.on( 'beforeGetData', beforeData, null, null, 0 );
 			editor.on( 'getData', afterData );
 		}
-
 	});
 
 	/**
@@ -684,9 +733,11 @@
 	 * is restrained to, only selection spans within the target element is considered as valid.
 	 */
 	CKEDITOR.dom.selection = function( target ) {
-		var isElement = target instanceof CKEDITOR.dom.element;
+		var isElement = target instanceof CKEDITOR.dom.element,
+			root;
+
 		this.document = target instanceof CKEDITOR.dom.document ? target : target.getDocument();
-		this.root = isElement ? target : this.document.getBody();
+		this.root = root = isElement ? target : this.document.getBody();
 		this.isLocked = 0;
 		this._ = {
 			cache: {}
@@ -696,24 +747,46 @@
 		// on the editable element while still having no selection
 		// available. We normalize it here by replicating the
 		// behavior of other browsers.
-		if ( CKEDITOR.env.webkit ) {
-			var sel = this.document.getWindow().$.getSelection();
-			if ( sel.type == 'None' && this.document.getActive().equals( this.root ) || sel.type == 'Caret' && sel.anchorNode.nodeType == CKEDITOR.NODE_DOCUMENT ) {
-				var range = new CKEDITOR.dom.range( this.root );
-				range.moveToPosition( this.root, CKEDITOR.POSITION_AFTER_START );
-				var nativeRange = this.document.$.createRange();
-				nativeRange.setStart( range.startContainer.$, range.startOffset );
-				nativeRange.collapse( 1 );
+		//
+		// Webkit's condition covers also the case when editable hasn't been focused
+		// at all. Thanks to this hack Webkit always has selection in the right place.
+		//
+		// On FF and IE we only fix the first case, when editable was activated
+		// but the selection is broken - usually this happens after setData if editor was focused.
 
-				// It may happen that setting proper selection will
-				// cause focus to be fired. Cancel it because focus
-				// shouldn't be fired when retriving selection. (#10115)
-				var listener = this.root.on( 'focus', function( evt ) {
-					evt.cancel();
-				}, null, null, -100 );
-				sel.addRange( nativeRange );
-				listener.removeListener();
+		var sel = isMSSelection ? this.document.$.selection : this.document.getWindow().$.getSelection();
+
+		if ( CKEDITOR.env.webkit ) {
+			if ( sel.type == 'None' && this.document.getActive().equals( root ) || sel.type == 'Caret' && sel.anchorNode.nodeType == CKEDITOR.NODE_DOCUMENT )
+				fixInitialSelection( root, sel );
+		}
+		else if ( CKEDITOR.env.gecko ) {
+			if ( sel && this.document.getActive().equals( root ) &&
+				sel.anchorNode && sel.anchorNode.nodeType == CKEDITOR.NODE_DOCUMENT )
+				fixInitialSelection( root, sel, true );
+		}
+		else if ( CKEDITOR.env.ie ) {
+			var active;
+
+			// IE8,9 throw unspecified error when trying to access document.$.activeElement.
+			try {
+				active = this.document.getActive();
+			} catch ( e ) {}
+
+			// IEs 9+.
+			if ( !isMSSelection ) {
+				var anchorNode = sel && sel.anchorNode;
+
+				if ( anchorNode )
+					anchorNode = new CKEDITOR.dom.node( anchorNode );
+
+				if ( active && active.equals( this.document.getDocumentElement() ) &&
+					anchorNode && ( root.equals( anchorNode ) || root.contains( anchorNode ) ) )
+					fixInitialSelection( root, null, true );
 			}
+			// IEs 7&8.
+			else if ( sel.type == 'None' && active && active.equals( this.document.getDocumentElement() ) )
+				fixInitialSelection( root, null, true );
 		}
 
 		// Check whether browser focus is really inside of the editable element.
@@ -738,7 +811,7 @@
 		}
 
 		// Selection out of concerned range, empty the selection.
-		if ( !( rangeParent && ( this.root.equals( rangeParent ) || this.root.contains( rangeParent ) ) ) ) {
+		if ( !( rangeParent && ( root.equals( rangeParent ) || root.contains( rangeParent ) ) ) ) {
 			this._.cache.type = CKEDITOR.SELECTION_NONE;
 			this._.cache.startElement = null;
 			this._.cache.selectedElement = null;

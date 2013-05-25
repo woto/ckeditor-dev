@@ -5,7 +5,7 @@
 
 CKEDITOR.plugins.add( 'table', {
 	requires: 'dialog',
-	lang: 'af,ar,bg,bn,bs,ca,cs,cy,da,de,el,en-au,en-ca,en-gb,en,eo,es,et,eu,fa,fi,fo,fr-ca,fr,gl,gu,he,hi,hr,hu,is,it,ja,ka,km,ko,ku,lt,lv,mk,mn,ms,nb,nl,no,pl,pt-br,pt,ro,ru,sk,sl,sr-latn,sr,sv,th,tr,ug,uk,vi,zh-cn,zh', // %REMOVE_LINE_CORE%
+	lang: 'af,ar,bg,bn,bs,ca,cs,cy,da,de,el,en-au,en-ca,en-gb,en,eo,es,et,eu,fa,fi,fo,fr-ca,fr,gl,gu,he,hi,hr,hu,is,it,ja,ka,km,ko,ku,lt,lv,mk,mn,ms,nb,nl,no,pl,pt-br,pt,ro,ru,sk,sl,sq,sr-latn,sr,sv,th,tr,ug,uk,vi,zh-cn,zh', // %REMOVE_LINE_CORE%
 	icons: 'table', // %REMOVE_LINE_CORE%
 	init: function( editor ) {
 		if ( editor.blockless )
@@ -20,7 +20,7 @@ CKEDITOR.plugins.add( 'table', {
 				'caption tbody thead tfoot;' +
 				'th td tr[scope];' +
 				( editor.plugins.dialogadvtab ? 'table' + editor.plugins.dialogadvtab.allowedContent() : '' ),
-			requiredContent: 'table', // TODO We should also check td and tr.
+			requiredContent: 'table',
 			contentTransformations: [
 				[ 'table{width}: sizeToStyle', 'table[width]: sizeToAttribute' ]
 			]

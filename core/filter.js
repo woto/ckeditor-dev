@@ -216,6 +216,8 @@
 				rulesToOptimize = [];
 
 			for ( groupName in newRules ) {
+				rule = newRules[ groupName ];
+
 				// { 'p h1': true } => { 'p h1': {} }.
 				if ( typeof rule == 'boolean' )
 					rule = {};
@@ -224,7 +226,7 @@
 					rule = { match: rule };
 				// Clone (shallow) rule, because we'll modify it later.
 				else
-					rule = copy( newRules[ groupName ] );
+					rule = copy( rule );
 
 				// If this is not an unnamed rule ({ '$1' => { ... } })
 				// move elements list to property.
@@ -233,6 +235,8 @@
 
 				if ( featureName )
 					rule.featureName = featureName.toLowerCase();
+
+				standardizeRule( rule );
 
 				// Save rule and remember to optimize it.
 				this.allowedContent.push( rule );
@@ -274,15 +278,26 @@
 
 			// Filter all children, skip root (fragment or editable-like wrapper used by data processor).
 			fragment.forEach( function( el ) {
-					if ( el.type == CKEDITOR.NODE_ELEMENT ) {
-						if ( filterFn( el, rules, transformations, toBeRemoved, toHtml ) )
-							isModified = true;
-					}
-					else if ( el.type == CKEDITOR.NODE_COMMENT && el.value.match( /^\{cke_protected\}(?!\{C\})/ ) ) {
-						if ( !filterProtectedElement( el, protectedRegexs, filterFn, rules, transformations, toHtml ) )
-							toBeRemoved.push( el );
-					}
-				}, null, true );
+				if ( el.type == CKEDITOR.NODE_ELEMENT ) {
+					// (#10260) Don't touch elements like spans with data-cke-* attribute since they're
+					// responsible e.g. for placing markers, bookmarks, odds and stuff.
+					// We love 'em and we don't wanna lose anything during the filtering.
+					// '|' is to avoid tricky joints like data-="foo" + cke-="bar". Yes, they're possible.
+					//
+					// NOTE: data-cke-* assigned elements are preserved only when filter is used with
+					//       htmlDataProcessor.toHtml because we don't want to protect them when outputting data
+					//       (toDataFormat).
+					if ( toHtml && el.name == 'span' && ~CKEDITOR.tools.objectKeys( el.attributes ).join( '|' ).indexOf( 'data-cke-' ) )
+						return;
+
+					if ( filterFn( el, rules, transformations, toBeRemoved, toHtml ) )
+						isModified = true;
+				}
+				else if ( el.type == CKEDITOR.NODE_COMMENT && el.value.match( /^\{cke_protected\}(?!\{C\})/ ) ) {
+					if ( !filterProtectedElement( el, protectedRegexs, filterFn, rules, transformations, toHtml ) )
+						toBeRemoved.push( el );
+				}
+			}, null, true );
 
 			if ( toBeRemoved.length )
 				isModified = true;
@@ -357,8 +372,8 @@
 			if ( !feature )
 				return true;
 
-			// Some features may want to register other feature.
-			// E.g. button may return command bound to it.
+			// Some features may want to register other features.
+			// E.g. a button may return a command bound to it.
 			if ( feature.toFeature )
 				feature = feature.toFeature( this.editor );
 
@@ -404,7 +419,7 @@
 		 * This method is used by the editor to register {@link CKEDITOR.feature#contentForms}
 		 * when adding a feature with {@link #addFeature} or {@link CKEDITOR.editor#addFeature}.
 		 *
-		 * @param {Array} forms The feature's content forms.
+		 * @param {Array} forms The content forms of a feature.
 		 */
 		addContentForms: function( forms ) {
 			if ( this.disabled )
@@ -438,8 +453,8 @@
 
 		/**
 		 * Checks whether a feature can be enabled for the HTML restrictions in place
-		 * for the current CKEditor instance, based on the HTML the feature might
-		 * generate and the minimal HTML the feature needs to be able to generate.
+		 * for the current CKEditor instance, based on the HTML code the feature might
+		 * generate and the minimal HTML code the feature needs to be able to generate.
 		 *
 		 *		// TODO example
 		 *
@@ -453,8 +468,8 @@
 			if ( !feature )
 				return true;
 
-			// Some features may want to register other feature.
-			// E.g. button may return command bound to it.
+			// Some features may want to register other features.
+			// E.g. a button may return a command bound to it.
 			if ( feature.toFeature )
 				feature = feature.toFeature( this.editor );
 
@@ -480,7 +495,7 @@
 		 * A single transformation rule is an object with four properties:
 		 *
 		 *	* `check` (optional) &ndash; if set and {@link CKEDITOR.filter} does
-		 *		not accept this allowed content rule, this transformation rule
+		 *		not accept this {@link CKEDITOR.filter.contentRule}, this transformation rule
 		 *		will not be executed (it does not *match*). This value is passed
 		 *		to {@link #check}.
 		 *	* `element` (optional) &ndash; this string property tells the filter on which
@@ -604,6 +619,16 @@
 			if ( this.disabled )
 				return true;
 
+			// If rules are an array, expand it and return the logical OR value of
+			// the rules.
+			if ( CKEDITOR.tools.isArray( test ) ) {
+				for ( var i = test.length ; i-- ; ) {
+					if ( this.check( test[ i ], applyTransformations, strictCheck ) )
+						return true;
+				}
+				return false;
+			}
+
 			var element, result, cacheKey;
 
 			if ( typeof test == 'string' ) {
@@ -666,7 +691,7 @@
 		var name = element.name;
 
 		// This generic rule doesn't apply to this element - skip it.
-		if ( !isSpecific && rule.elements && !rule.elements( name ) )
+		if ( !isSpecific && typeof rule.elements == 'function' && !rule.elements( name ) )
 			return;
 
 		// This rule doesn't match this element - skip it.
@@ -754,28 +779,81 @@
 		return rules;
 	}
 
-	// Extract required properties from props (if it is a string or array -
-	// other formats cannot contain required properties) and push them to req array.
-	// Return props array with removed '!' characters from items' names.
-	// It has to be returned because when props passed in string the
-	// reference will be broken.
-	function extractRequired( props, req ) {
-		var prop, i;
+	// Convert all validator formats (string, array, object, boolean) to hash or boolean:
+	// * true is returned for '*'/true validator,
+	// * false is returned for empty validator (no validator at all (false/null) or e.g. empty array),
+	// * object is returned in other cases.
+	function convertValidatorToHash( validator, delimiter ) {
+		if ( !validator )
+			return false;
 
-		if ( typeof props == 'string' )
-			props = props.split( /\s*,\s*/ );
+		if ( validator === true )
+			return validator;
 
-		// Not an array - may be a function or object.
-		if ( typeof props != 'object' || !props.length )
-			return props;
+		if ( typeof validator == 'string' ) {
+			validator = trim( validator );
+			if ( validator == '*' )
+				return true;
+			else
+				return CKEDITOR.tools.convertArrayToObject( validator.split( delimiter ) );
+		}
+		else if ( CKEDITOR.tools.isArray( validator ) ) {
+			if ( validator.length )
+				return CKEDITOR.tools.convertArrayToObject( validator );
+			else
+				return false;
+		}
+		// If object.
+		else {
+			var obj = {},
+				len = 0;
 
-		for ( i = 0; i < props.length; ++i ) {
-			prop = props[ i ];
-			if ( prop.indexOf( '!' ) === 0 )
-				req.push( ( props[ i ] = prop.slice( 1 ) ) );
+			for ( var i in validator ) {
+				obj[ i ] = validator[ i ];
+				len++
+			}
+
+			return len ? obj : false;
+		}
+	}
+
+	// Extract required properties from "required" validator and "all" properties.
+	// Remove exclamation marks from "all" properties.
+	//
+	// E.g.:
+	// requiredClasses = { cl1: true }
+	// (all) classes = { cl1: true, cl2: true, '!cl3': true }
+	//
+	// result:
+	// returned = { cl1: true, cl3: true }
+	// all = { cl1: true, cl2: true, cl3: true }
+	//
+	// This function returns false if nothing is required.
+	function extractRequired( required, all ) {
+		var unbang = [],
+			empty = true,
+			i;
+
+		if ( required )
+			empty = false;
+		else
+			required = {};
+
+		for ( i in all ) {
+			if ( i.charAt( 0 ) == '!' ) {
+				i = i.slice( 1 );
+				unbang.push( i );
+				required[ i ] = true;
+				empty = false;
+			}
 		}
 
-		return props;
+		while ( ( i = unbang.pop() ) ) {
+			all[ i ] = all[ '!' + i ];
+			delete all[ '!' + i ];
+		}
+
+		return empty ? false : required;
 	}
 
 	// Filter element protected with a comment.
@@ -848,9 +926,10 @@
 				for ( i = 0; i < transformations.length; ++i )
 					applyTransformationsGroup( that, element, transformations[ i ] );
 
-				// Update style and class attrs, because that won't be done after applying rules.
-				if ( !optimizedRules )
-					updateAttributes( element );
+				// Do not count on updateElement(), because it:
+				// * may not be called,
+				// * may skip some properties when all are marked as valid.
+				updateAttributes( element );
 			}
 
 			if ( optimizedRules ) {
@@ -921,14 +1000,12 @@
 
 	// Check whether element has all properties (styles,classes,attrs) required by a rule.
 	function hasAllRequired( rule, element ) {
-		var required = rule.required;
-
-		if ( !required )
+		if ( rule.nothingRequired )
 			return true;
 
 		var i, reqs, existing;
 
-		if ( ( reqs = required.classes ) ) {
+		if ( ( reqs = rule.requiredClasses ) ) {
 			existing = element.classes;
 			for ( i = 0; i < reqs.length; ++i ) {
 				if ( CKEDITOR.tools.indexOf( existing, reqs[ i ] ) == -1 )
@@ -936,8 +1013,8 @@
 			}
 		}
 
-		return hasAllRequiredInHash( element.styles, required.styles ) &&
-			hasAllRequiredInHash( element.attributes, required.attributes );
+		return hasAllRequiredInHash( element.styles, rule.requiredStyles ) &&
+			hasAllRequiredInHash( element.attributes, rule.requiredAttributes );
 	}
 
 	// Check whether all items in required (array) exist in existing (object).
@@ -1015,97 +1092,65 @@
 		return obj;
 	}
 
-	var validators = { elements:1,styles:1,attributes:1,classes:1 },
+	var validators = { styles:1,attributes:1,classes:1 },
 		validatorsRequired = {
 			styles: 'requiredStyles',
 			attributes: 'requiredAttributes',
 			classes: 'requiredClasses'
 		};
 
-	// Optimize rule's validators (for elements, styles, etc.).
-	// If any of these validators is a wildcard return true,
-	// what means that this rule is a priority.
-	// It should be applied in the first order, because it will
-	// mark many properties as valid without checking them,
-	// so next rules will be able to skip them saving time.
-	function optimizeValidators( rule ) {
-		var validator, allReqs, reqProp,
-			priority = false,
-			reqs = {},
-			hasReq;
+	// Optimize a rule by replacing validators with functions
+	// and rewriting requiredXXX validators to arrays.
+	function optimizeRule( rule ) {
+		var i;
+		for ( i in validators )
+			rule[ i ] = validatorFunction( rule[ i ] );
 
-		for ( var i in validators ) {
-			allReqs = [];
-
-			if ( ( validator = rule[ i ] ) ) {
-				// Extract required properties (those with '!') to the allReqs array.
-				validator = extractRequired( validator, allReqs );
-				// True means that this is a wildcard, so this rule have a high priority.
-				if ( ( rule[ i ] = validatorFunction( validator ) ) === true )
-					priority = true;
-			}
-
-			// Add names from requiredClasses/Attrs/Styles to allReqs array.
-			if ( ( reqProp = rule[ validatorsRequired[ i ] ] ) ) {
-				if ( typeof reqProp == 'string' )
-					reqProp = reqProp.split( /\s*,\s*/ );
-				allReqs = allReqs.concat( reqProp );
-			}
-
-			if ( allReqs.length ) {
-				reqs[ i ] = allReqs;
-				hasReq = 1;
-			}
+		var nothingRequired = true;
+		for ( i in validatorsRequired ) {
+			i = validatorsRequired[ i ];
+			rule[ i ] = CKEDITOR.tools.objectKeys( rule[ i ] );
+			if ( rule[ i ] )
+				nothingRequired = false;
 		}
 
-		return {
-			priority: priority,
-			required: hasReq ? reqs : null
-		};
+		rule.nothingRequired = nothingRequired;
 	}
 
 	// Add optimized version of rule to optimizedRules object.
 	function optimizeRules( optimizedRules, rules ) {
 		var elementsRules = optimizedRules.elements || {},
 			genericRules = optimizedRules.generic || [],
-			i, l, rule, elements, element, optResult;
+			i, l, j, rule, element, priority;
 
 		for ( i = 0, l = rules.length; i < l; ++i ) {
 			// Shallow copy. Do not modify original rule.
 			rule = copy( rules[ i ] );
+			priority = rule.classes === true || rule.styles === true || rule.attributes === true;
+			optimizeRule( rule );
 
+			// E.g. "*(xxx)[xxx]" - it's a generic rule that
+			// validates properties only.
+			// Or '$1': { match: function() {...} }
+			if ( rule.elements === true || rule.elements === null ) {
+				rule.elements = validatorFunction( rule.elements );
+				// Add priority rules at the beginning.
+				genericRules[ priority ? 'unshift' : 'push' ]( rule );
+			}
 			// If elements list was explicitly defined,
 			// add this rule for every defined element.
-			if ( typeof rule.elements == 'string' ) {
-				// Do not optimize rule.elements.
-				elements = trim( rule.elements );
+			else {
+				// We don't need elements validator for this kind of rule.
+				var elements = rule.elements;
 				delete rule.elements;
-				optResult = optimizeValidators( rule );
 
-				// E.g. "*(xxx)[xxx]" - it's a generic rule that
-				// validates properties only.
-				if ( elements == '*' ) {
-					rule.propertiesOnly = true;
-					// Add priority rules at the beginning.
-					genericRules[ optResult.priority ? 'unshift' : 'push' ]( rule );
-				} else {
-					elements = elements.split( /\s+/ );
-
-					while ( ( element = elements.pop() ) ) {
-						if ( !elementsRules[ element ] )
-							elementsRules[ element ] = [ rule ];
-						else
-							elementsRules[ element ][ optResult.priority ? 'unshift' : 'push' ]( rule );
-					}
+				for ( element in elements ) {
+					if ( !elementsRules[ element ] )
+						elementsRules[ element ] = [ rule ];
+					else
+						elementsRules[ element ][ priority ? 'unshift' : 'push' ]( rule );
 				}
-			} else {
-				optResult = optimizeValidators( rule );
-
-				// Add priority rules at the beginning.
-				genericRules[ optResult.priority ? 'unshift' : 'push' ]( rule );
 			}
-
-			rule.required = optResult.required;
 		}
 
 		optimizedRules.elements = elementsRules;
@@ -1167,6 +1212,23 @@
 			element.classes = element.attributes[ 'class' ] ? element.attributes[ 'class' ].split( /\s+/ ) : [];
 	}
 
+	// Standardize a rule by converting all validators to hashes.
+	function standardizeRule( rule ) {
+		rule.elements = convertValidatorToHash( rule.elements, /\s+/ ) || null;
+		rule.propertiesOnly = rule.propertiesOnly || ( rule.elements === true );
+
+		var delim = /\s*,\s*/,
+			i;
+
+		for ( i in validators ) {
+			rule[ i ] = convertValidatorToHash( rule[ i ], delim ) || null;
+			rule[ validatorsRequired[ i ] ] = extractRequired( convertValidatorToHash(
+				rule[ validatorsRequired[ i ] ], delim ), rule[ i ] ) || null;
+		}
+
+		rule.match = rule.match || null;
+	}
+
 	// Copy element's styles and classes back to attributes array.
 	function updateAttributes( element ) {
 		var attrs = element.attributes,
@@ -1194,7 +1256,7 @@
 			styles = element.styles,
 			origClasses = attrs[ 'class' ],
 			origStyles = attrs.style,
-			name,
+			name, origName,
 			stylesArr = [],
 			classesArr = [],
 			internalAttr = /^data-cke-/,
@@ -1205,13 +1267,24 @@
 		delete attrs[ 'class' ];
 
 		if ( !status.allAttributes ) {
-			// We can safely remove class and styles attributes because they will be serialized later.
 			for ( name in attrs ) {
 				// If not valid and not internal attribute delete it.
-				if ( !validAttrs[ name ] && !internalAttr.test( name ) ) {
-					delete attrs[ name ];
-					isModified = true;
+				if ( !validAttrs[ name ] ) {
+					// Allow all internal attibutes...
+					if ( internalAttr.test( name ) ) {
+						// ... unless this is a saved attribute and the original one isn't allowed.
+						if ( name != ( origName = name.replace( /^data-cke-saved-/, '' ) ) &&
+							!validAttrs[ origName ]
+						) {
+							delete attrs[ name ];
+							isModified = true;
+						}
+					} else {
+						delete attrs[ name ];
+						isModified = true;
+					}
 				}
+
 			}
 		}
 
@@ -1250,10 +1323,8 @@
 
 		switch ( element.name ) {
 			case 'a':
-				attrs = element.attributes;
-				if ( !attrs.href && !attrs.name )
-					return false;
-				if ( !attrs.name && !element.children.length )
+				// Code borrowed from htmlDataProcessor, so ACF does the same clean up.
+				if ( !( element.children.length || element.attributes.name ) )
 					return false;
 				break;
 			case 'img':
@@ -1265,42 +1336,15 @@
 		return true;
 	}
 
-	// Create validator function based on multiple
-	// accepted validator formats:
-	// function, string ('a,b,c'), regexp, array (['a','b','c']) and object ({a:1,b:2,c:3})
 	function validatorFunction( validator ) {
-		if ( validator == '*' )
+		if ( !validator )
+			return false;
+		if ( validator === true )
 			return true;
 
-		var type = typeof validator;
-		if ( type == 'object' )
-			type = validator.test ? 'regexp' :
-				validator.push ? 'array' :
-				type;
-
-		switch ( type ) {
-			case 'function':
-				return validator;
-			case 'string':
-				var arr = trim( validator ).split( /\s*,\s*/ );
-				return function( value ) {
-					return CKEDITOR.tools.indexOf( arr, value ) > -1;
-				};
-			case 'regexp':
-				return function( value ) {
-					return validator.test( value );
-				};
-			case 'array':
-				return function( value ) {
-					return CKEDITOR.tools.indexOf( validator, value ) > -1;
-				};
-			case 'object':
-				return function( value ) {
-					return value in validator;
-				};
-		}
-
-		return false;
+		return function( value ) {
+			return value in validator;
+		};
 	}
 
 	//
@@ -1613,7 +1657,7 @@
 	}
 
 	/**
-	 * Singleton containing tools useful for transformations rules.
+	 * Singleton containing tools useful for transformation rules.
 	 *
 	 * @class CKEDITOR.filter.transformationsTools
 	 * @singleton
@@ -1688,6 +1732,40 @@
 		},
 
 		/**
+		 * Converts the `align` attribute to the `float` style if not set. Attribute
+		 * is always removed.
+		 *
+		 * @param {CKEDITOR.htmlParser.element} element
+		 */
+		alignmentToStyle: function( element ) {
+			if ( !( 'float' in element.styles ) ) {
+				var value = element.attributes.align;
+
+				if ( value == 'left' || value == 'right' )
+					element.styles[ 'float' ] = value; // Uh... GCC doesn't like the 'float' prop name.
+			}
+
+			delete element.attributes.align;
+		},
+
+		/**
+		 * Converts the `float` style to the `align` attribute if not set.
+		 * Style is always removed.
+		 *
+		 * @param {CKEDITOR.htmlParser.element} element
+		 */
+		alignmentToAttribute: function( element ) {
+			if ( !( 'align' in element.attributes ) ) {
+				var value = element.styles[ 'float' ];
+
+				if ( value == 'left' || value == 'right' )
+					element.attributes.align = value;
+			}
+
+			delete element.styles[ 'float' ]; // Uh... GCC doesn't like the 'float' prop name.
+		},
+
+		/**
 		 * Checks whether an element matches a given {@link CKEDITOR.style}.
 		 * The element can be a "superset" of a style, e.g. it may have
 		 * more classes, but needs to have at least those defined in the style.
@@ -1697,12 +1775,12 @@
 		 */
 		matchesStyle: elementMatchesStyle,
 
-		/*
+		/**
 		 * Transforms element to given form.
 		 *
 		 * Form may be a:
 		 *
-		 * 	* {@link CKEDITOR.style},
+		 *	* {@link CKEDITOR.style},
 		 *	* string &ndash; the new name of an element.
 		 *
 		 * @param {CKEDITOR.htmlParser.element} el
@@ -1799,7 +1877,7 @@
  *					editor.filter.check( 'b' ); // -> true (thanks to extraAllowedContent)
  *					editor.setData( '<h1><i>Foo</i></h1><p class="left"><b>Bar</b> <a href="http://foo.bar">foo</a></p>' );
  *					// Editor contents will be:
- *					'<h1>Foo</h1><p><b>Bar</b> foo</p>'
+ *					'<h1><i>Foo</i></h1><p><b>Bar</b> foo</p>'
  *				}
  *			}
  *		} );
@@ -1819,6 +1897,7 @@
  * editor configuration.
  *
  * @since 4.1
+ * @readonly
  * @property {CKEDITOR.filter} filter
  * @member CKEDITOR.editor
  */
@@ -1844,9 +1923,9 @@
  *
  * Possible formats are:
  *
- *	* [string format](#!/guide/dev_allowed_content_rules-section-2),
- *	* [object format](#!/guide/dev_allowed_content_rules-section-3),
- *	* {@link CKEDITOR.style} &ndash; used mainly for integrating plugins with ACF,
+ *	* the [string format](#!/guide/dev_allowed_content_rules-section-2),
+ *	* the [object format](#!/guide/dev_allowed_content_rules-section-3),
+ *	* a {@link CKEDITOR.style} instance &ndash; used mainly for integrating plugins with Advanced Content Filter,
  *	* an array of the above formats.
  *
  * @since 4.1
@@ -1855,10 +1934,11 @@
  */
 
 /**
- * Virtual class which is {@link CKEDITOR.filter#check} argument's type.
+ * Virtual class representing {@link CKEDITOR.filter#check} argument.
  *
  * This is a simplified version of the {@link CKEDITOR.filter.allowedContentRules} type.
- * It may contain only one element and its styles, classes and attributes.
+ * It may contain only one element and its styles, classes, and attributes. Only the
+ * string format and a {@link CKEDITOR.style} instances are accepted.
  *
  * @since 4.1
  * @class CKEDITOR.filter.contentRule
@@ -1959,10 +2039,10 @@
  * Returns a feature that this feature needs to register.
  *
  * In some cases, during activation, one feature may need to register
- * other feature. For example a {@link CKEDITOR.ui.button} often registers
+ * another feature. For example a {@link CKEDITOR.ui.button} often registers
  * a related command. See {@link CKEDITOR.ui.button#toFeature}.
  *
- * This method is executed when feature is passed to the {@link CKEDITOR.editor#addFeature}.
+ * This method is executed when a feature is passed to the {@link CKEDITOR.editor#addFeature}.
  *
  * @method toFeature
  * @returns {CKEDITOR.feature}
