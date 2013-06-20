@@ -27,6 +27,8 @@ var CKBUILDER_CONFIG = {
 		pastetext: 1,
 		toolbar: 1,
 		undo: 1,
-		wysiwygarea: 1
+		wysiwygarea: 1,
+		autogrow: 1,
+		divarea: 1
 	}
 };
