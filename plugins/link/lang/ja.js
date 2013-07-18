@@ -1,6 +1,6 @@
 ﻿/*
 Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
-For licensing, see LICENSE.html or http://ckeditor.com/license
+For licensing, see LICENSE.md or http://ckeditor.com/license
 */
 CKEDITOR.plugins.setLang( 'link', 'ja', {
 	acccessKey: 'アクセスキー',
@@ -45,7 +45,7 @@ CKEDITOR.plugins.setLang( 'link', 'ja', {
 	popupStatusBar: 'ステータスバー',
 	popupToolbar: 'ツールバー',
 	popupTop: '上端からの座標で指定',
-	rel: 'Relationship', // MISSING
+	rel: '関連リンク',
 	selectAnchor: 'アンカーを選択',
 	styles: 'スタイルシート',
 	tabIndex: 'タブインデックス',

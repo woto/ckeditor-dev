@@ -1,6 +1,6 @@
 #!/bin/bash
 # Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
-# For licensing, see LICENSE.html or http://ckeditor.com/license
+# For licensing, see LICENSE.md or http://ckeditor.com/license
 
 # Updates cklangtool. This script should not be executed separately, it is included in other scripts.
 
@@ -46,6 +46,6 @@ fi
 cd ../..
 
 
-plugins=( about basicstyles bidi blockquote clipboard colorbutton colordialog contextmenu div docprops elementspath fakeobjects find flash font format forms horizontalrule iframe image indent justify link list liststyle maximize newpage pagebreak pastefromword pastetext preview print removeformat save selectall showblocks smiley sourcearea sourcedialog specialchar stylescombo table templates toolbar undo )
+plugins=( about basicstyles bidi blockquote clipboard colorbutton colordialog contextmenu div docprops elementspath fakeobjects find flash font format forms horizontalrule iframe image indent justify link list liststyle magicline maximize newpage pagebreak pastefromword pastetext preview print removeformat save selectall showblocks smiley sourcearea sourcedialog specialchar stylescombo table templates toolbar undo )
 plugins_dialogs=( a11yhelp specialchar )
 

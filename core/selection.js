@@ -1,6 +1,6 @@
 ﻿/**
  * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
- * For licensing, see LICENSE.html or http://ckeditor.com/license
+ * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
 (function() {
@@ -792,7 +792,8 @@
 		// Check whether browser focus is really inside of the editable element.
 
 		var nativeSel = this.getNative(),
-			rangeParent;
+			rangeParent,
+			range;
 
 		if ( nativeSel ) {
 			if ( nativeSel.getRangeAt ) {
