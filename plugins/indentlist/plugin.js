@@ -1,6 +1,6 @@
 /**
  * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
- * For licensing, see LICENSE.html or http://ckeditor.com/license
+ * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
 /**
@@ -114,7 +114,7 @@
 			database = this.database,
 			context = this.context;
 
-		function indentList( listNode ) {
+		function indent( listNode ) {
 			// Our starting and ending points of the range might be inside some blocks under a list item...
 			// So before playing with the iterator, we need to expand the block to include the list items.
 			var startContainer = range.startContainer,
@@ -271,7 +271,7 @@
 			}
 
 			if ( nearestListBlock )
-				return indentList( nearestListBlock );
+				return indent( nearestListBlock );
 		}
 		return 0;
 	}
