@@ -1,5 +1,5 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -29,7 +29,7 @@ CKEDITOR.plugins.setLang( 'specialchar', 'nl', {
 	sup2: 'Superscript twee',
 	sup3: 'Superscript drie',
 	acute: 'Accent aigu',
-	micro: 'Mico-teken',
+	micro: 'Micro-teken',
 	para: 'Alinea-teken',
 	middot: 'Halfhoge punt',
 	cedil: 'Cedille',
@@ -122,4 +122,4 @@ CKEDITOR.plugins.setLang( 'specialchar', 'nl', {
 	hArr: 'Dubbele pijl naar links',
 	diams: 'Zwart ruitje',
 	asymp: 'Benaderingsteken'
-});
+} );

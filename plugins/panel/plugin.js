@@ -1,14 +1,14 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
-(function() {
+( function() {
 	CKEDITOR.plugins.add( 'panel', {
 		beforeInit: function( editor ) {
 			editor.ui.addHandler( CKEDITOR.UI_PANEL, CKEDITOR.ui.panel.handler );
 		}
-	});
+	} );
 
 	/**
 	 * Panel UI element.
@@ -34,7 +34,7 @@
 		CKEDITOR.tools.extend( this, {
 			className: '',
 			css: []
-		});
+		} );
 
 		this.id = CKEDITOR.tools.getNextId();
 		this.document = document;
@@ -100,10 +100,10 @@
 							doc = iframe.getFrameDocument();
 
 						// Make it scrollable on iOS. (#8308)
-						CKEDITOR.env.iOS && parentDiv.setStyles({
+						CKEDITOR.env.iOS && parentDiv.setStyles( {
 							'overflow': 'scroll',
 							'-webkit-overflow-scrolling': 'touch'
-						});
+						} );
 
 						var onLoad = CKEDITOR.tools.addFunction( CKEDITOR.tools.bind( function( ev ) {
 							this.isLoaded = true;
@@ -111,7 +111,7 @@
 								this.onLoad();
 						}, this ) );
 
-						doc.write( frameDocTpl.output( CKEDITOR.tools.extend({
+						doc.write( frameDocTpl.output( CKEDITOR.tools.extend( {
 							css: CKEDITOR.tools.buildStyleHtml( this.css ),
 							onload: 'window.parent.CKEDITOR.tools.callFunction(' + onLoad + ');'
 						}, data ) ) );
@@ -176,10 +176,10 @@
 					) + '}())' :
 					'';
 
-				data.frame = frameTpl.output({
+				data.frame = frameTpl.output( {
 					id: this.id + '_frame',
 					src: src
-				});
+				} );
 			}
 
 			var html = panelTpl.output( data );
@@ -221,15 +221,11 @@
 			// for FF. (#8864)
 			var holder = !this.forceIFrame || CKEDITOR.env.ie ? this._.holder : this.document.getById( this.id + '_frame' );
 
-			if ( current ) {
-				// Clean up the current block's effects on holder.
-				holder.removeAttributes( current.attributes );
+			if ( current )
 				current.hide();
-			}
 
 			this._.currentBlock = block;
 
-			holder.setAttributes( block.attributes );
 			CKEDITOR.fire( 'ariaWidget', holder );
 
 			// Reset the focus index, so it will always go into the first one.
@@ -255,7 +251,7 @@
 	 *
 	 * @todo class and all methods
 	 */
-	CKEDITOR.ui.panel.block = CKEDITOR.tools.createClass({
+	CKEDITOR.ui.panel.block = CKEDITOR.tools.createClass( {
 		/**
 		 * Creates a block class instances.
 		 *
@@ -265,10 +261,8 @@
 		$: function( blockHolder, blockDefinition ) {
 			this.element = blockHolder.append( blockHolder.getDocument().createElement( 'div', {
 				attributes: {
-					'tabIndex': -1,
-					'class': 'cke_panel_block',
-					'role': 'presentation',
-					'tabindex': 0
+					'tabindex': -1,
+					'class': 'cke_panel_block'
 				},
 				styles: {
 					display: 'none'
@@ -279,16 +273,12 @@
 			if ( blockDefinition )
 				CKEDITOR.tools.extend( this, blockDefinition );
 
-
 			// Set the a11y attributes of this element ...
 			this.element.setAttributes( {
+				'role': this.attributes.role || 'presentation',
 				'aria-label': this.attributes[ 'aria-label' ],
 				'title': this.attributes.title || this.attributes[ 'aria-label' ]
 			} );
-
-			// ...  and remove them from being set in the panel main element.
-			delete this.attributes[ 'aria-label' ];
-			delete this.attributes.title;
 
 			this.keys = {};
 
@@ -329,7 +319,7 @@
 					this.element.setStyle( 'display', 'none' );
 			},
 
-			onKeyDown: function( keystroke ) {
+			onKeyDown: function( keystroke, noCycle ) {
 				var keyAction = this.keys[ keystroke ];
 				switch ( keyAction ) {
 					// Move forward.
@@ -348,6 +338,13 @@
 								break;
 							}
 						}
+
+						// If no link was found, cycle and restart from the top. (#11125)
+						if ( !link && !noCycle ) {
+							this._.focusIndex = -1;
+							return this.onKeyDown( keystroke, 1 );
+						}
+
 						return false;
 
 						// Move backward.
@@ -364,7 +361,18 @@
 								link.focus();
 								break;
 							}
+
+							// Make sure link is null when the loop ends and nothing was
+							// found (#11125).
+							link = null;
 						}
+
+						// If no link was found, cycle and restart from the bottom. (#11125)
+						if ( !link && !noCycle ) {
+							this._.focusIndex = links.count();
+							return this.onKeyDown( keystroke, 1 );
+						}
+
 						return false;
 
 					case 'click':
@@ -381,9 +389,9 @@
 				return true;
 			}
 		}
-	});
+	} );
 
-})();
+} )();
 
 /**
  * Fired when a panel is added to the document.

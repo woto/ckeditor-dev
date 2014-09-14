@@ -1,5 +1,5 @@
 ﻿/*
-Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
 For licensing, see LICENSE.md or http://ckeditor.com/license
 */
 CKEDITOR.plugins.setLang( 'docprops', 'sv', {
@@ -33,10 +33,10 @@ CKEDITOR.plugins.setLang( 'docprops', 'sv', {
 	metaAuthor: 'Författare',
 	metaCopyright: 'Upphovsrätt',
 	metaDescription: 'Sidans beskrivning',
-	metaKeywords: 'Sidans nyckelord',
-	other: '<annan>',
+	metaKeywords: 'Sidans nyckelord (kommaseparerade)',
+	other: 'Annan...',
 	previewHtml: '<p>Detta är en <strong>exempel text</strong>. Du använder <a href="javascript:void(0)">CKEditor</a>.</p>',
 	title: 'Dokumentegenskaper',
 	txtColor: 'Textfärg',
 	xhtmlDec: 'Inkludera XHTML deklaration'
-});
+} );

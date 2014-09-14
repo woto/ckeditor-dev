@@ -1,5 +1,5 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -8,7 +8,7 @@
  *		and other recordable changes.
  */
 
-(function() {
+( function() {
 	CKEDITOR.plugins.add( 'undo', {
 		lang: 'af,ar,bg,bn,bs,ca,cs,cy,da,de,el,en,en-au,en-ca,en-gb,eo,es,et,eu,fa,fi,fo,fr,fr-ca,gl,gu,he,hi,hr,hu,id,is,it,ja,ka,km,ko,ku,lt,lv,mk,mn,ms,nb,nl,no,pl,pt,pt-br,ro,ru,si,sk,sl,sq,sr,sr-latn,sv,th,tr,ug,uk,vi,zh,zh-cn', // %REMOVE_LINE_CORE%
 		icons: 'redo,redo-rtl,undo,undo-rtl', // %REMOVE_LINE_CORE%
@@ -157,8 +157,13 @@
 			 * @event lockSnapshot
 			 * @member CKEDITOR.editor
  			 * @param {CKEDITOR.editor} editor This editor instance.
+			 * @param data
+			 * @param {Boolean} [data.dontUpdate] When set to `true` the last snapshot will not be updated
+			 * with the current contents and selection. Read more in the {@link CKEDITOR.plugins.undo.UndoManager#lock} method.
 			 */
-			editor.on( 'lockSnapshot', undoManager.lock, undoManager );
+			editor.on( 'lockSnapshot', function( evt ) {
+				undoManager.lock( evt.data && evt.data.dontUpdate );
+			} );
 
 			/**
 			 * Unlocks the undo manager and updates the latest snapshot.
@@ -181,20 +186,25 @@
 	 * @class CKEDITOR.plugins.undo.Image
 	 * @constructor Creates an Image class instance.
 	 * @param {CKEDITOR.editor} editor The editor instance on which the image is created.
+	 * @param {Boolean} [contentsOnly] If set to `true` image will contain only contents, without selection.
 	 */
-	var Image = CKEDITOR.plugins.undo.Image = function( editor ) {
+	var Image = CKEDITOR.plugins.undo.Image = function( editor, contentsOnly ) {
 			this.editor = editor;
 
 			editor.fire( 'beforeUndoImage' );
 
-			var contents = editor.getSnapshot(),
-				selection = contents && editor.getSelection();
+			var contents = editor.getSnapshot();
 
 			// In IE, we need to remove the expando attributes.
-			CKEDITOR.env.ie && contents && ( contents = contents.replace( /\s+data-cke-expando=".*?"/g, '' ) );
+			if ( CKEDITOR.env.ie && contents )
+				contents = contents.replace( /\s+data-cke-expando=".*?"/g, '' );
 
 			this.contents = contents;
-			this.bookmarks = selection && selection.createBookmarks2( true );
+
+			if ( !contentsOnly ) {
+				var selection = contents && editor.getSelection();
+				this.bookmarks = selection && selection.createBookmarks2( true );
+			}
 
 			editor.fire( 'afterUndoImage' );
 		};
@@ -335,7 +345,7 @@
 					this.save( false, null, false );
 					this.modifiersCount = 1;
 				} else {
-					setTimeout(function() {
+					setTimeout( function() {
 						editor.fire( 'change' );
 					}, 0 );
 				}
@@ -347,7 +357,7 @@
 					this.save( false, null, false );
 					this.typesCount = 1;
 				} else {
-					setTimeout(function() {
+					setTimeout( function() {
 						editor.fire( 'change' );
 					}, 0 );
 				}
@@ -426,9 +436,9 @@
 
 					if ( image.equalsSelection( this.currentImage ) )
 						return false;
-				} else {
+				} else
 					this.editor.fire( 'change' );
-				}
+
 			}
 
 			// Drop future snapshots.
@@ -611,17 +621,32 @@
 		 * **Note:** For every `lock` call you must call {@link #unlock} once to unlock the undo manager.
 		 *
 		 * @since 4.0
+		 * @param {Boolean} [dontUpdate] When set to `true` the last snapashot will not be updated
+		 * with the current contents and selection. By default, if undo manager was up to date when lock started,
+		 * the last snapshot will be updated to the current state when unlocking. This means that all changes
+		 * done during lock will be merged into the previous snapshot or the next one. Use this option, to gain
+		 * more control over this behavior. For example, it is possible to group changes done during lock into
+		 * separate snapshot.
 		 */
-		lock: function() {
+		lock: function( dontUpdate ) {
 			if ( !this.locked ) {
-				var imageBefore = new Image( this.editor );
+				if ( dontUpdate )
+					this.locked = { level: 1 };
+				else {
+					// Make a contents image. Don't include bookmarks, because:
+					// * we don't compare them,
+					// * there's a chance that DOM has been changed since
+					// locked (e.g. fake) selection was made, so createBookmark2 could fail.
+					// http://dev.ckeditor.com/ticket/11027#comment:3
+					var imageBefore = new Image( this.editor, true );
 
-				// If current editor content matches the tip of snapshot stack,
-				// the stack tip must be updated by unlock, to include any changes made
-				// during this period.
-				var matchedTip = this.currentImage && this.currentImage.equalsContent( imageBefore );
+					// If current editor content matches the tip of snapshot stack,
+					// the stack tip must be updated by unlock, to include any changes made
+					// during this period.
+					var matchedTip = this.currentImage && this.currentImage.equalsContent( imageBefore );
 
-				this.locked = { update: matchedTip ? imageBefore : null, level: 1 };
+					this.locked = { update: matchedTip ? imageBefore : null, level: 1 };
+				}
 			}
 			// Increase the level of lock.
 			else
@@ -640,17 +665,17 @@
 				// Decrease level of lock and check if equals 0, what means that undoM is completely unlocked.
 				if ( !--this.locked.level ) {
 					var updateImage = this.locked.update,
-						newImage = new Image( this.editor );
+						newImage = updateImage && new Image( this.editor, true );
 
 					this.locked = null;
 
 					if ( updateImage && !updateImage.equalsContent( newImage ) )
-						this.update( newImage );
+						this.update();
 				}
 			}
 		}
 	};
-})();
+} )();
 
 /**
  * The number of undo steps to be saved. The higher value is set, the more

@@ -1,5 +1,5 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -8,7 +8,7 @@
  *		mode, which handles the main editing area space.
  */
 
-(function() {
+( function() {
 	CKEDITOR.plugins.add( 'wysiwygarea', {
 		init: function( editor ) {
 			if ( editor.config.fullPage ) {
@@ -64,13 +64,13 @@
 				editor.on( 'beforeModeUnload', function( evt ) {
 					evt.removeListener();
 					desc.remove();
-				});
+				} );
 
-				iframe.setAttributes({
+				iframe.setAttributes( {
 					'aria-describedby': labelId,
 					tabIndex: editor.tabIndex,
 					allowTransparency: 'true'
-				});
+				} );
 
 				// Execute onLoad manually for all non IE||Gecko browsers.
 				!useOnloadEvent && onLoad();
@@ -99,9 +99,9 @@
 					editor.editable( new framedWysiwyg( editor, iframe.$.contentWindow.document.body ) );
 					editor.setData( editor.getData( 1 ), callback );
 				}
-			});
+			} );
 		}
-	});
+	} );
 
 	function onDomReady( win ) {
 		var editor = this.editor,
@@ -163,12 +163,12 @@
 			doc.getDocumentElement().addClass( doc.$.compatMode );
 
 			// Prevent IE from leaving new paragraph after deleting all contents in body. (#6966)
-			editor.config.enterMode != CKEDITOR.ENTER_P && doc.on( 'selectionchange', function() {
+			editor.config.enterMode != CKEDITOR.ENTER_P && this.attachListener( doc, 'selectionchange', function() {
 				var body = doc.getBody(),
 					sel = editor.getSelection(),
 					range = sel && sel.getRanges()[ 0 ];
 
-				if ( range && body.getHtml().match( /^<p>&nbsp;<\/p>$/i ) && range.startContainer.equals( body ) ) {
+				if ( range && body.getHtml().match( /^<p>(?:&nbsp;|<br>)<\/p>$/i ) && range.startContainer.equals( body ) ) {
 					// Avoid the ambiguity from a real user cursor position.
 					setTimeout( function() {
 						range = editor.getSelection().getRanges()[ 0 ];
@@ -179,7 +179,20 @@
 						}
 					}, 0 );
 				}
-			});
+			} );
+		}
+
+		// Fix problem with cursor not appearing in Webkit and IE11+ when clicking below the body (#10945, #10906).
+		// Fix for older IEs (8-10 and QM) is placed inside selection.js.
+		if ( CKEDITOR.env.webkit || ( CKEDITOR.env.ie && CKEDITOR.env.version > 10 ) ) {
+			doc.getDocumentElement().on( 'mousedown', function( evt ) {
+				if ( evt.data.getTarget().is( 'html' ) ) {
+					// IE needs this timeout. Webkit does not, but it does not cause problems too.
+					setTimeout( function() {
+						editor.editable().focus();
+					} );
+				}
+			} );
 		}
 
 		// ## START : disableNativeTableHandles and disableObjectResizing settings.
@@ -201,7 +214,7 @@
 				// For browsers in which the above method failed, we can cancel the resizing on the fly (#4208)
 				this.attachListener( this, CKEDITOR.env.ie ? 'resizestart' : 'resize', function( evt ) {
 					evt.data.preventDefault();
-				});
+				} );
 			}
 		}
 
@@ -229,7 +242,7 @@
 						evt.data.preventDefault();
 					}
 				}
-			});
+			} );
 		}
 
 		if ( CKEDITOR.env.ie ) {
@@ -248,7 +261,7 @@
 				try {
 					doc.$.selection.empty();
 				} catch ( er ) {}
-			});
+			} );
 		}
 
 		// ## END
@@ -293,7 +306,7 @@
 		}, 0, this );
 	}
 
-	var framedWysiwyg = CKEDITOR.tools.createClass({
+	var framedWysiwyg = CKEDITOR.tools.createClass( {
 		$: function( editor ) {
 			this.base.apply( this, arguments );
 
@@ -320,7 +333,7 @@
 				}
 				else {
 					this._.isLoadingData = true;
-					editor._.dataStore = { id:1 };
+					editor._.dataStore = { id: 1 };
 
 					var config = editor.config,
 						fullPage = config.fullPage,
@@ -340,10 +353,10 @@
 						data = data.replace( /<!DOCTYPE[^>]*>/i, function( match ) {
 							editor.docType = docType = match;
 							return '';
-						}).replace( /<\?xml\s[^\?]*\?>/i, function( match ) {
+						} ).replace( /<\?xml\s[^\?]*\?>/i, function( match ) {
 							editor.xmlDeclaration = match;
 							return '';
-						});
+						} );
 					}
 
 					// Get the HTML version of the data.
@@ -440,7 +453,7 @@
 					// Work around Firefox bug - error prune when called from XUL (#320),
 					// defer it thanks to the async nature of this method.
 					try { doc.write( data ); } catch ( e ) {
-						setTimeout( function () { doc.write( data ); }, 0 );
+						setTimeout( function() { doc.write( data ); }, 0 );
 					}
 				}
 			},
@@ -498,16 +511,13 @@
 				var onResize = iframe.removeCustomData( 'onResize' );
 				onResize && onResize.removeListener();
 
-
-				editor.fire( 'contentDomUnload' );
-
 				// IE BUG: When destroying editor DOM with the selection remains inside
 				// editing area would break IE7/8's selection system, we have to put the editing
 				// iframe offline first. (#3812 and #5441)
 				iframe.remove();
 			}
 		}
-	});
+	} );
 
 	// DOM modification here should not bother dirty flag.(#4385)
 	function restoreDirty( editor ) {
@@ -545,9 +555,9 @@
 		// Use correct cursor for these elements
 		css.push( 'img,input,textarea{cursor:default}' );
 
-		return css.join('\n');
+		return css.join( '\n' );
 	}
-})();
+} )();
 
 /**
  * Disables the ability of resize objects (image and tables) in the editing area.
@@ -595,10 +605,10 @@ CKEDITOR.config.disableNativeSpellChecker = true;
  *		config.contentsCss = '/css/mysitestyles.css';
  *		config.contentsCss = ['/css/mysitestyles.css', '/css/anotherfile.css'];
  *
- * @cfg {String/Array} [contentsCss=CKEDITOR.basePath + 'contents.css']
+ * @cfg {String/Array} [contentsCss=CKEDITOR.getUrl( 'contents.css' )]
  * @member CKEDITOR.config
  */
-CKEDITOR.config.contentsCss = CKEDITOR.basePath + 'contents.css';
+CKEDITOR.config.contentsCss = CKEDITOR.getUrl( 'contents.css' );
 
 /**
  * Language code of  the writting language which is used to author the editor

@@ -1,5 +1,5 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -20,6 +20,7 @@
 CKEDITOR.lang[ 'zh-cn' ] = {
 	// ARIA description.
 	editor: '所见即所得编辑器',
+	editorPanel: '所见即所得编辑器面板',
 
 	// Common messages and labels.
 	common: {
@@ -32,7 +33,7 @@ CKEDITOR.lang[ 'zh-cn' ] = {
 		protocol: '协议',
 		upload: '上传',
 		uploadSubmit: '上传到服务器',
-		image: '图象',
+		image: '图像',
 		flash: 'Flash',
 		form: '表单',
 		checkbox: '复选框',

@@ -1,5 +1,5 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -20,6 +20,7 @@
 CKEDITOR.lang[ 'sr-latn' ] = {
 	// ARIA description.
 	editor: 'Bogati uređivač teksta',
+	editorPanel: 'Rich Text Editor panel', // MISSING
 
 	// Common messages and labels.
 	common: {
@@ -63,7 +64,7 @@ CKEDITOR.lang[ 'sr-latn' ] = {
 		advancedTab: 'Napredni tagovi',
 		validateNumberFailed: 'Ova vrednost nije broj.',
 		confirmNewPage: 'Nesačuvane promene ovog sadržaja će biti izgubljene. Jeste li sigurni da želita da učitate novu stranu?',
-		confirmCancel: 'Some of the options have been changed. Are you sure to close the dialog?', // MISSING
+		confirmCancel: 'You have changed some options. Are you sure you want to close the dialog window?', // MISSING
 		options: 'Opcije',
 		target: 'Meta',
 		targetNew: 'Novi prozor (_blank)',

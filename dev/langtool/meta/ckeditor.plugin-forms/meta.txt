@@ -1,4 +1,4 @@
-# Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+# Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
 # For licensing, see LICENSE.md or http://ckeditor.com/license
 
 button.title = Label for the Button Properties dialog window.
@@ -45,3 +45,7 @@ textfield.maxChars = Label for the Maximum Characters field of the Text Field Pr
 textfield.type = Label for the Type field of the Text Field Properties dialog window.
 textfield.typeText = Label for the Text type of the Text Field Properties dialog window.
 textfield.typePass = Label for the Password type of the Text Field Properties dialog window.
+textfield.typeEmail = 
+textfield.typeSearch = 
+textfield.typeTel = 
+textfield.typeUrl = 

@@ -1,5 +1,5 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -75,32 +75,59 @@ CKEDITOR.plugins.add( 'format', {
 
 			onRender: function() {
 				editor.on( 'selectionChange', function( ev ) {
-
 					var currentTag = this.getValue(),
-						elementPath = ev.data.path,
-						isEnabled = !editor.readOnly && elementPath.isContextFor( 'p' );
+						elementPath = ev.data.path;
 
-					// Disable the command when selection path is "blockless".
-					this[ isEnabled ? 'enable' : 'disable' ]();
+					this.refresh();
 
-					if ( isEnabled ) {
-
-						for ( var tag in styles ) {
-							if ( styles[ tag ].checkActive( elementPath ) ) {
-								if ( tag != currentTag )
-									this.setValue( tag, editor.lang.format[ 'tag_' + tag ] );
-								return;
-							}
+					for ( var tag in styles ) {
+						if ( styles[ tag ].checkActive( elementPath ) ) {
+							if ( tag != currentTag )
+								this.setValue( tag, editor.lang.format[ 'tag_' + tag ] );
+							return;
 						}
-
-						// If no styles match, just empty it.
-						this.setValue( '' );
 					}
+
+					// If no styles match, just empty it.
+					this.setValue( '' );
+
 				}, this );
+			},
+
+			onOpen: function() {
+				this.showAll();
+				for ( var name in styles ) {
+					var style = styles[ name ];
+
+					// Check if that style is enabled in activeFilter.
+					if ( !editor.activeFilter.check( style ) )
+						this.hideItem( name );
+
+				}
+			},
+
+			refresh: function() {
+				var elementPath = editor.elementPath();
+
+				if ( !elementPath )
+						return;
+
+				// Check if element path contains 'p' element.
+				if ( !elementPath.isContextFor( 'p' ) ) {
+					this.setState( CKEDITOR.TRISTATE_DISABLED );
+					return;
+				}
+
+				// Check if there is any available style.
+				for ( var name in styles ) {
+					if ( editor.activeFilter.check( styles[ name ] ) )
+						return;
+				}
+				this.setState( CKEDITOR.TRISTATE_DISABLED );
 			}
-		});
+		} );
 	}
-});
+} );
 
 /**
  * A list of semi colon separated style names (by default tags) representing

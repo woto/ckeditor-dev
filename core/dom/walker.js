@@ -1,9 +1,9 @@
 /**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
-(function() {
+( function() {
 	// This function is to be called under a "walker" instance scope.
 	function iterate( rtl, breakOnFalse ) {
 		var range = this.range;
@@ -130,10 +130,9 @@
 	}
 
 	/**
-	 * Utility class to "walk" the DOM inside a range boundaries. If
-	 * necessary, partially included nodes (text nodes) are broken to
-	 * reflect the boundaries limits, so DOM and range changes may happen.
-	 * Outside changes to the range may break the walker.
+	 * Utility class to "walk" the DOM inside a range boundaries. If the
+	 * range starts or ends in the middle of the text node this node will
+	 * be included as a whole. Outside changes to the range may break the walker.
 	 *
 	 * The walker may return nodes that are not totaly included into the
 	 * range boundaires. Let's take the following range representation,
@@ -150,7 +149,7 @@
 	 *
 	 * @class
 	 */
-	CKEDITOR.dom.walker = CKEDITOR.tools.createClass({
+	CKEDITOR.dom.walker = CKEDITOR.tools.createClass( {
 		/**
 		 * Creates a walker class instance.
 		 *
@@ -295,26 +294,35 @@
 			}
 
 		}
-	});
+	} );
 
 	// Anything whose display computed style is block, list-item, table,
 	// table-row-group, table-header-group, table-footer-group, table-row,
 	// table-column-group, table-column, table-cell, table-caption, or whose node
 	// name is hr, br (when enterMode is br only) is a block boundary.
-	var blockBoundaryDisplayMatch = { block:1,'list-item':1,table:1,'table-row-group':1,'table-header-group':1,'table-footer-group':1,'table-row':1,'table-column-group':1,'table-column':1,'table-cell':1,'table-caption':1 };
+	var blockBoundaryDisplayMatch = { block: 1, 'list-item': 1, table: 1, 'table-row-group': 1,
+			'table-header-group': 1, 'table-footer-group': 1, 'table-row': 1, 'table-column-group': 1,
+			'table-column': 1, 'table-cell': 1, 'table-caption': 1 },
+		outOfFlowPositions = { absolute: 1, fixed: 1 };
 
 	/**
 	 * Checks whether element is displayed as a block.
 	 *
 	 * @member CKEDITOR.dom.element
-	 * @param [custoNodeNames]
+	 * @param [customNodeNames] Custom list of nodes which will extend
+	 * default {@link CKEDITOR.dtd#$block} list.
 	 * @returns {Boolean}
 	 */
 	CKEDITOR.dom.element.prototype.isBlockBoundary = function( customNodeNames ) {
-		var nodeNameMatches = customNodeNames ? CKEDITOR.tools.extend( {}, CKEDITOR.dtd.$block, customNodeNames ) : CKEDITOR.dtd.$block;
+		// Whether element is in normal page flow. Floated or positioned elements are out of page flow.
+		// Don't consider floated or positioned formatting as block boundary, fall back to dtd check in that case. (#6297)
+		var inPageFlow = this.getComputedStyle( 'float' ) == 'none' && !( this.getComputedStyle( 'position' ) in outOfFlowPositions );
 
-		// Don't consider floated formatting as block boundary, fall back to dtd check in that case. (#6297)
-		return this.getComputedStyle( 'float' ) == 'none' && blockBoundaryDisplayMatch[ this.getComputedStyle( 'display' ) ] || nodeNameMatches[ this.getName() ];
+		if ( inPageFlow && blockBoundaryDisplayMatch[ this.getComputedStyle( 'display' ) ] )
+			return true;
+
+		// Either in $block or in customNodeNames if defined.
+		return !!( this.is( CKEDITOR.dtd.$block ) || customNodeNames && this.is( customNodeNames ) );
 	};
 
 	/**
@@ -336,7 +344,7 @@
 	 * @todo
 	 */
 	CKEDITOR.dom.walker.listItemBoundary = function() {
-		return this.blockBoundary( { br:1 } );
+		return this.blockBoundary( { br: 1 } );
 	};
 
 	/**
@@ -381,7 +389,7 @@
 					CKEDITOR.env.webkit && node.getText() == '\u200b';
 			}
 
-			return !! ( isReject ^ isWhitespace );
+			return !!( isReject ^ isWhitespace );
 		};
 	};
 
@@ -444,7 +452,7 @@
 		}
 
 		return function( node ) {
-			var isBogus = !CKEDITOR.env.ie ? node.is && node.is( 'br' ) : node.getText && tailNbspRegex.test( node.getText() );
+			var isBogus = CKEDITOR.env.needsBrFiller ? node.is && node.is( 'br' ) : node.getText && tailNbspRegex.test( node.getText() );
 
 			if ( isBogus ) {
 				var parent = node.getParent(),
@@ -553,7 +561,7 @@
 				return true;
 
 			// Empty blocks are editable on IE.
-			if ( CKEDITOR.env.ie && node.is( dtdTextBlock ) && isEmpty( node ) )
+			if ( !CKEDITOR.env.needsBrFiller && node.is( dtdTextBlock ) && isEmpty( node ) )
 				return true;
 		}
 
@@ -599,10 +607,10 @@
 		}
 		while ( toSkip( tail ) )
 
-		if ( tail && ( !CKEDITOR.env.ie ? tail.is && tail.is( 'br' ) : tail.getText && tailNbspRegex.test( tail.getText() ) ) ) {
+		if ( tail && ( CKEDITOR.env.needsBrFiller ? tail.is && tail.is( 'br' ) : tail.getText && tailNbspRegex.test( tail.getText() ) ) )
 			return tail;
-		}
+
 		return false;
 	};
 
-})();
+} )();

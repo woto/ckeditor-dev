@@ -1,5 +1,5 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -20,6 +20,7 @@
 CKEDITOR.lang[ 'el' ] = {
 	// ARIA description.
 	editor: 'Επεξεργαστής Πλούσιου Κειμένου',
+	editorPanel: 'Πίνακας Επεξεργαστή Πλούσιου Κειμένου',
 
 	// Common messages and labels.
 	common: {
@@ -51,7 +52,7 @@ CKEDITOR.lang[ 'el' ] = {
 		langDirRtl: 'Δεξιά προς Αριστερά (RTL)',
 		langCode: 'Κωδικός Γλώσσας',
 		longDescr: 'Αναλυτική Περιγραφή URL',
-		cssClass: 'Stylesheet Classes', // MISSING
+		cssClass: 'Κλάσεις Φύλλων Στυλ',
 		advisoryTitle: 'Ενδεικτικός Τίτλος',
 		cssStyle: 'Μορφή Κειμένου',
 		ok: 'OK',
@@ -68,12 +69,12 @@ CKEDITOR.lang[ 'el' ] = {
 		target: 'Προορισμός',
 		targetNew: 'Νέο Παράθυρο (_blank)',
 		targetTop: 'Αρχική Περιοχή (_top)',
-		targetSelf: 'Ίδια Περιοχή (_self)',
+		targetSelf: 'Ίδιο Παράθυρο (_self)',
 		targetParent: 'Γονεϊκό Παράθυρο (_parent)',
 		langDirLTR: 'Αριστερά προς Δεξιά (LTR)',
 		langDirRTL: 'Δεξιά προς Αριστερά (RTL)',
 		styles: 'Μορφή',
-		cssClasses: 'Stylesheet Classes',
+		cssClasses: 'Κλάσεις Φύλλων Στυλ',
 		width: 'Πλάτος',
 		height: 'Ύψος',
 		align: 'Στοίχιση',

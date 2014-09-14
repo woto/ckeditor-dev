@@ -1,13 +1,13 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
-(function() {
+( function() {
 	CKEDITOR.plugins.add( 'enterkey', {
 		init: function( editor ) {
 			editor.addCommand( 'enter', {
-				modes: { wysiwyg:1 },
+				modes: { wysiwyg: 1 },
 				editorFocus: false,
 				exec: function( editor ) {
 					enter( editor );
@@ -15,7 +15,7 @@
 			} );
 
 			editor.addCommand( 'shiftEnter', {
-				modes: { wysiwyg:1 },
+				modes: { wysiwyg: 1 },
 				editorFocus: false,
 				exec: function( editor ) {
 					shiftEnter( editor );
@@ -130,7 +130,7 @@
 					}
 
 					else if ( !needsBlock ) {
-						block.appendBogus();
+						block.appendBogus( true );
 
 						// If block is the first or last child of the parent
 						// list, move all block's children out of the list:
@@ -301,9 +301,8 @@
 					};
 
 					node = walker.next();
-					if ( node && node.type == CKEDITOR.NODE_ELEMENT && node.is( 'ul', 'ol' ) ) {
-						( CKEDITOR.env.ie ? doc.createText( '\xa0' ) : doc.createElement( 'br' ) ).insertBefore( node );
-					}
+					if ( node && node.type == CKEDITOR.NODE_ELEMENT && node.is( 'ul', 'ol' ) )
+						( CKEDITOR.env.needsBrFiller ? doc.createElement( 'br' ) : doc.createText( '\xa0' ) ).insertBefore( node );
 				}
 
 				// Move the selection to the end block.
@@ -356,8 +355,7 @@
 					}
 				}
 
-				if ( !CKEDITOR.env.ie )
-					newBlock.appendBogus();
+				newBlock.appendBogus();
 
 				if ( !newBlock.getParent() )
 					range.insertNode( newBlock );
@@ -445,8 +443,8 @@
 				range.deleteContents();
 				range.insertNode( lineBreak );
 
-				// IE has different behavior regarding position.
-				if ( CKEDITOR.env.ie )
+				// Old IEs have different behavior regarding position.
+				if ( !CKEDITOR.env.needsBrFiller )
 					range.setStartAt( lineBreak, CKEDITOR.POSITION_AFTER_END );
 				else {
 					// A text node is required by Gecko only to make the cursor blink.
@@ -528,4 +526,4 @@
 		// Return the first range.
 		return ranges[ 0 ];
 	}
-})();
+} )();

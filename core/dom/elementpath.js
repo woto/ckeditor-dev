@@ -1,11 +1,11 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
 'use strict';
 
-(function() {
+( function() {
 
 	var pathBlockLimitElements = {},
 		pathBlockElements = {},
@@ -64,9 +64,9 @@
 				if ( !this.lastElement ) {
 					this.lastElement = e;
 
-					// If a table is fully selected at the end of the element path,
+					// If an object or non-editable element is fully selected at the end of the element path,
 					// it must not become the block limit.
-					if ( e.is( CKEDITOR.dtd.$object ) )
+					if ( e.is( CKEDITOR.dtd.$object ) || e.getAttribute( 'contenteditable' ) == 'false' )
 						continue;
 				}
 
@@ -145,7 +145,7 @@
 		 */
 	};
 
-})();
+} )();
 
 CKEDITOR.dom.elementPath.prototype = {
 	/**

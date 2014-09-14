@@ -1,5 +1,5 @@
 /**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -7,7 +7,7 @@
  * @fileOverview Handles the indentation of lists.
  */
 
-(function() {
+( function() {
 	'use strict';
 
 	var isNotWhitespaces = CKEDITOR.dom.walker.whitespaces( true ),
@@ -211,9 +211,7 @@
 					while ( ( followingList = followingList.getNext() ) && followingList.is && followingList.getName() in context ) {
 						// IE requires a filler NBSP for nested list inside empty list item,
 						// otherwise the list item will be inaccessiable. (#4476)
-						if ( CKEDITOR.env.ie && !li.getFirst( function( node ) {
-							return isNotWhitespaces( node ) && isNotBookmark( node );
-						} ) )
+						if ( CKEDITOR.env.needsNbspFiller && !li.getFirst( neitherWhitespacesNorBookmark ) )
 							li.append( range.document.createText( '\u00a0' ) );
 
 						li.append( followingList );
@@ -223,11 +221,14 @@
 				}
 			}
 
+			if ( newList )
+				editor.fire( 'contentDomInvalidated' );
+
 			return true;
 		}
 
 		var selection = editor.getSelection(),
-			ranges = selection && selection.getRanges( 1 ),
+			ranges = selection && selection.getRanges(),
 			iterator = ranges.createIterator(),
 			range;
 
@@ -290,4 +291,8 @@
 	function listItem( node ) {
 		return node.type == CKEDITOR.NODE_ELEMENT && node.is( 'li' );
 	}
-})();
+
+	function neitherWhitespacesNorBookmark( node ) {
+		return isNotWhitespaces( node ) && isNotBookmark( node );
+	}
+} )();

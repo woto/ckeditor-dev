@@ -1,5 +1,5 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -20,6 +20,7 @@
 CKEDITOR.lang[ 'ca' ] = {
 	// ARIA description.
 	editor: 'Editor de text enriquit',
+	editorPanel: 'Panell de l\'editor de text enriquit',
 
 	// Common messages and labels.
 	common: {

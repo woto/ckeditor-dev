@@ -1,5 +1,5 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -8,7 +8,7 @@
  *		editor instance.
  */
 
-(function() {
+( function() {
 	// Override the basic constructor defined at editor_basic.js.
 	Editor.prototype = CKEDITOR.editor.prototype;
 	CKEDITOR.editor = Editor;
@@ -218,6 +218,12 @@
 	}
 
 	function updateCommandsContext( editor, path, forceRefresh ) {
+		// Commands cannot be refreshed without a path. In edge cases
+		// it may happen that there's no selection when this function is executed.
+		// For example when active filter is changed in #10877.
+		if ( !path )
+			return;
+
 		var command,
 			name,
 			commands = editor.commands;
@@ -273,7 +279,7 @@
 				// Call the load config again. This time the custom
 				// config is already cached and so it will get loaded.
 				loadConfig( editor );
-			});
+			} );
 		}
 
 		return true;
@@ -298,7 +304,7 @@
 			}
 
 			onConfigLoaded( editor );
-		});
+		} );
 
 		// The instance config may override the customConfig setting to avoid
 		// loading the default ~/config.js file.
@@ -393,7 +399,7 @@
 	function loadSkin( editor ) {
 		CKEDITOR.skin.loadPart( 'editor', function() {
 			loadLang( editor );
-		});
+		} );
 	}
 
 	function loadLang( editor ) {
@@ -449,7 +455,7 @@
 			editor.fire( 'langLoaded' );
 
 			preloadStylesSet( editor );
-		});
+		} );
 	}
 
 	// Preloads styles set file (config.stylesSet).
@@ -540,7 +546,7 @@
 				if ( requires && ( match = requires.match( removeRegex ) ) ) {
 					while ( ( name = match.pop() ) ) {
 						CKEDITOR.tools.setTimeout( function( name, pluginName ) {
-							throw new Error( 'Plugin "' + name.replace( ',', '' ) + '" cannot be removed from the plugins list, because it\'s required by "' + pluginName + '" plugin.');
+							throw new Error( 'Plugin "' + name.replace( ',', '' ) + '" cannot be removed from the plugins list, because it\'s required by "' + pluginName + '" plugin.' );
 						}, 0, null, [ name, pluginName ] );
 					}
 				}
@@ -615,8 +621,8 @@
 				editor.status = 'loaded';
 				editor.fireOnce( 'loaded' );
 				CKEDITOR.fire( 'instanceLoaded', null, editor );
-			});
-		});
+			} );
+		} );
 	}
 
 	// Send to data output back to editor's associated element.
@@ -930,7 +936,7 @@
 				this.on( 'dataReady', function( evt ) {
 					evt.removeListener();
 					callback.call( evt.editor );
-				});
+				} );
 			}
 
 			// Fire "setData" so data manipulation may happen.
@@ -1168,7 +1174,10 @@
 				if ( filter === this.filter )
 					this.setActiveEnterMode( null, null );
 				else
-					this.setActiveEnterMode( filter.getAllowedEnterMode(), filter.getAllowedEnterMode( true ) );
+					this.setActiveEnterMode(
+						filter.getAllowedEnterMode( this.enterMode ),
+						filter.getAllowedEnterMode( this.shiftEnterMode, true )
+					);
 			}
 		},
 
@@ -1217,8 +1226,8 @@
 				this.fire( 'activeEnterModeChange' );
 			}
 		}
-	});
-})();
+	} );
+} )();
 
 /**
  * The editor has no associated element.
@@ -1744,5 +1753,16 @@ CKEDITOR.ELEMENT_MODE_INLINE = 3;
  * See {@link #contentDom} documentation for more details.
  *
  * @event contentDomUnload
+ * @param {CKEDITOR.editor} editor This editor instance.
+ */
+
+/**
+ * The event fired when contents DOM changes and some of the references as well as
+ * native DOM event listeners could be lost.
+ * This event is useful when it is important to keep track of references
+ * to elements in the editable contents from code.
+ *
+ * @since 4.3
+ * @event contentDomInvalidated
  * @param {CKEDITOR.editor} editor This editor instance.
  */

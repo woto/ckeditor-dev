@@ -1,9 +1,9 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
-(function() {
+( function() {
 	'use strict';
 
 	CKEDITOR.plugins.add( 'stylescombo', {
@@ -136,20 +136,13 @@
 						var style = styles[ name ],
 							type = style.type;
 
-						// Check if block styles are applicable.
-						if ( type == CKEDITOR.STYLE_BLOCK && !elementPath.isContextFor( style.element ) ) {
+						if ( style.checkApplicable( elementPath, editor.activeFilter ) )
+							counter[ type ]++;
+						else
 							this.hideItem( name );
-							continue;
-						}
 
 						if ( style.checkActive( elementPath ) )
 							this.mark( name );
-						else if ( type == CKEDITOR.STYLE_OBJECT && !style.checkApplicable( elementPath ) ) {
-							this.hideItem( name );
-							counter[ type ]--;
-						}
-
-						counter[ type ]++;
 					}
 
 					if ( !counter[ CKEDITOR.STYLE_BLOCK ] )
@@ -160,6 +153,21 @@
 
 					if ( !counter[ CKEDITOR.STYLE_OBJECT ] )
 						this.hideGroup( lang[ 'panelTitle' + String( CKEDITOR.STYLE_OBJECT ) ] );
+				},
+
+				refresh: function() {
+					var elementPath = editor.elementPath();
+
+					if ( !elementPath )
+						return;
+
+					for ( var name in styles ) {
+						var style = styles[ name ];
+
+						if ( style.checkApplicable( elementPath, editor.activeFilter ) )
+							return;
+					}
+					this.setState( CKEDITOR.TRISTATE_DISABLED );
 				},
 
 				// Force a reload of the data
@@ -174,7 +182,7 @@
 					styles = {};
 					stylesList = [];
 				}
-			});
+			} );
 		}
-	});
-})();
+	} );
+} )();

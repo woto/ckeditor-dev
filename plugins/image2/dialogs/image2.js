@@ -1,6 +1,10 @@
 /**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
- * For licensing, see LICENSE.html or http://ckeditor.com/license
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
+ * For licensing, see LICENSE.md or http://ckeditor.com/license
+ */
+
+/**
+ * @fileOverview Image plugin based on Widgets API
  */
 
 'use strict';
@@ -32,6 +36,12 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 				resetButtonId: resetButtonId
 			} ),
 
+		helpers = CKEDITOR.plugins.image2,
+
+		// Functions inherited from image2 plugin.
+		checkHasNaturalRatio = helpers.checkHasNaturalRatio,
+		getNatural = helpers.getNatural,
+
 		// Global variables referring to the dialog's context.
 		doc, widget, image,
 
@@ -48,7 +58,9 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 		lockRatio, userDefinedLock,
 
 		// Global variables referring to dialog fields and elements.
-		lockButton, resetButton, widthField, heightField;
+		lockButton, resetButton, widthField, heightField,
+
+		natural;
 
 	// Validates dimension. Allowed values are:
 	// "123px", "123", "" (empty string)
@@ -88,7 +100,10 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 		// @param {Function} callback.
 		return function( src, callback, scope ) {
 			addListener( 'load', function() {
-				callback.call( scope, image, image.$.width, image.$.height );
+				// Don't use image.$.(width|height) since it's buggy in IE9-10 (#11159)
+				var dimensions = getNatural( image );
+
+				callback.call( scope, image, dimensions.width, dimensions.height );
 			} );
 
 			addListener( 'error', function() {
@@ -101,6 +116,69 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 
 			image.setAttribute( 'src', src + '?' + Math.random().toString( 16 ).substring( 2 ) );
 		};
+	}
+
+	// This function updates width and height fields once the
+	// "src" field is altered. Along with dimensions, also the
+	// dimensions lock is adjusted.
+	function onChangeSrc() {
+		var value = this.getValue();
+
+		toggleDimensions( false );
+
+		// Remember that src is different than default.
+		if ( value !== widget.data.src ) {
+			// Update dimensions of the image once it's preloaded.
+			preLoader( value, function( image, width, height ) {
+				// Re-enable width and height fields.
+				toggleDimensions( true );
+
+				// There was problem loading the image. Unlock ratio.
+				if ( !image )
+					return toggleLockRatio( false );
+
+				// Fill width field with the width of the new image.
+				widthField.setValue( width );
+
+				// Fill height field with the height of the new image.
+				heightField.setValue( height );
+
+				// Cache the new width.
+				preLoadedWidth = width;
+
+				// Cache the new height.
+				preLoadedHeight = height;
+
+				// Check for new lock value if image exist.
+				toggleLockRatio( helpers.checkHasNaturalRatio( image ) );
+			} );
+
+			srcChanged = true;
+		}
+
+		// Value is the same as in widget data but is was
+		// modified back in time. Roll back dimensions when restoring
+		// default src.
+		else if ( srcChanged ) {
+			// Re-enable width and height fields.
+			toggleDimensions( true );
+
+			// Restore width field with cached width.
+			widthField.setValue( domWidth );
+
+			// Restore height field with cached height.
+			heightField.setValue( domHeight );
+
+			// Src equals default one back again.
+			srcChanged = false;
+		}
+
+		// Value is the same as in widget data and it hadn't
+		// been modified.
+		else {
+			// Re-enable width and height fields.
+			toggleDimensions( true );
+		}
 	}
 
 	function onChangeDimension() {
@@ -116,7 +194,7 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 
 		// If the value of the field is invalid (e.g. with %), unlock ratio.
 		if ( !value.match( regexGetSizeOrEmpty ) )
-			toggleLockDimensions( false );
+			toggleLockRatio( false );
 
 		// No automatic re-scale when dimension is '0'.
 		if ( value === '0' )
@@ -165,10 +243,12 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 
 		// Activate (Un)LockRatio button
 		if ( lockButton ) {
-			dialog.addFocusable( lockButton, 4 );
+			// Consider that there's an additional focusable field
+			// in the dialog when the "browse" button is visible.
+			dialog.addFocusable( lockButton, 4 + hasFileBrowser );
 
 			lockButton.on( 'click', function( evt ) {
-				toggleLockDimensions();
+				toggleLockRatio();
 				evt.data && evt.data.preventDefault();
 			}, this.getDialog() );
 
@@ -177,7 +257,9 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 
 		// Activate the reset size button.
 		if ( resetButton ) {
-			dialog.addFocusable( resetButton, 5 );
+			// Consider that there's an additional focusable field
+			// in the dialog when the "browse" button is visible.
+			dialog.addFocusable( resetButton, 5 + hasFileBrowser );
 
 			// Fills width and height fields with the original dimensions of the
 			// image (stored in widget#data since widget#init).
@@ -203,45 +285,27 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 		}
 	}
 
-	function toggleLockDimensions( enable ) {
+	function toggleLockRatio( enable ) {
 		// No locking if there's no radio (i.e. due to ACF).
 		if ( !lockButton )
 			return;
 
-		var width, height;
+		if ( typeof enable == 'boolean' ) {
+			// If user explicitly wants to decide whether
+			// to lock or not, don't do anything.
+			if ( userDefinedLock )
+				return;
 
-		// Check image ratio and original image ratio, but respecting user's
-		// preference. This is performed when a new image is pre-loaded
-		// but not if user already manually locked the ratio.
-		if ( enable == 'check' && !userDefinedLock ) {
-			width = widthField.getValue();
-			height = heightField.getValue();
-
-			var	domRatio = preLoadedWidth * 1000 / preLoadedHeight,
-				ratio = width * 1000 / height;
-
-			lockRatio = false;
-
-			// Lock ratio, if there is no width and no height specified.
-			if ( !width && !height )
-				lockRatio = true;
-
-			// Lock ratio if there is at least width or height specified,
-			// and the old ratio that matches the new one.
-			else if ( !isNaN( domRatio + ratio ) && Math.round( domRatio ) == Math.round( ratio ) )
-				lockRatio = true;
-		}
-
-		// True or false.
-		else if ( typeof enable == 'boolean' )
 			lockRatio = enable;
+		}
 
 		// Undefined. User changed lock value.
 		else {
+			var width = widthField.getValue(),
+				height;
+
 			userDefinedLock = true;
 			lockRatio = !lockRatio;
-
-			width = widthField.getValue();
 
 			// Automatically adjust height to width to match
 			// the original ratio (based on dom- dimensions).
@@ -270,6 +334,40 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 		heightField[ method ]();
 	}
 
+	var hasFileBrowser = !!( editor.config.filebrowserImageBrowseUrl || editor.config.filebrowserBrowseUrl ),
+		srcBoxChildren = [
+			{
+				id: 'src',
+				type: 'text',
+				label: commonLang.url,
+				onKeyup: onChangeSrc,
+				onChange: onChangeSrc,
+				setup: function( widget ) {
+					this.setValue( widget.data.src );
+				},
+				commit: function( widget ) {
+					widget.setData( 'src', this.getValue() );
+				},
+				validate: CKEDITOR.dialog.validate.notEmpty( lang.urlMissing )
+			}
+		];
+
+	// Render the "Browse" button on demand to avoid an "empty" (hidden child)
+	// space in dialog layout that distorts the UI.
+	if ( hasFileBrowser ) {
+		srcBoxChildren.push( {
+			type: 'button',
+			id: 'browse',
+			// v-align with the 'txtUrl' field.
+			// TODO: We need something better than a fixed size here.
+			style: 'display:inline-block;margin-top:16px;',
+			align: 'center',
+			label: editor.lang.common.browseServer,
+			hidden: true,
+			filebrowser: 'info:src'
+		} );
+	}
+
 	return {
 		title: lang.title,
 		minWidth: 250,
@@ -283,103 +381,38 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 		},
 		onShow: function() {
 			// Create a "global" reference to edited widget.
-			widget = this._.widget;
+			widget = this.widget;
 
 			// Create a "global" reference to widget's image.
 			image = widget.parts.image;
 
 			// Reset global variables.
-			preLoadedWidth = preLoadedHeight = srcChanged =
-				userDefinedLock = lockRatio = false;
+			srcChanged = userDefinedLock = lockRatio = false;
 
-			// TODO: IE8
+			// Natural dimensions of the image.
+			natural = getNatural( image );
+
 			// Get the natural width of the image.
-			domWidth = image.$.naturalWidth;
+			preLoadedWidth = domWidth = natural.width;
 
-			// TODO: IE8
 			// Get the natural height of the image.
-			domHeight = image.$.naturalHeight;
-
-			// Determine image ratio lock on startup. Delayed, waiting for
-			// fields to be filled with setup functions.
-			setTimeout( function() {
-				toggleLockDimensions( 'check' );
-			} );
+			preLoadedHeight = domHeight = natural.height;
 		},
 		contents: [
 			{
 				id: 'info',
+				label: lang.infoTab,
 				elements: [
 					{
-						id: 'src',
-						type: 'text',
-						label: commonLang.url,
-						onKeyup: function() {
-							var value = this.getValue();
-
-							toggleDimensions( false );
-
-							// Remember that src is different than default.
-							if ( value !== widget.data.src ) {
-								// Update dimensions of the image once it's preloaded.
-								preLoader( value, function( image, width, height ) {
-									// Re-enable width and height fields.
-									toggleDimensions( true );
-
-									// There was problem loading the image. Unlock ratio.
-									if ( !image )
-										return toggleLockDimensions( false );
-
-									// Fill width field with the width of the new image.
-									widthField.setValue( width );
-
-									// Fill height field with the height of the new image.
-									heightField.setValue( height );
-
-									// Cache the new width.
-									preLoadedWidth = width;
-
-									// Cache the new height.
-									preLoadedHeight = height;
-
-									// Check for new lock value if image exist.
-									toggleLockDimensions( 'check' );
-								} );
-
-								srcChanged = true;
+						type: 'vbox',
+						padding: 0,
+						children: [
+							{
+								type: 'hbox',
+								widths: [ '100%' ],
+								children: srcBoxChildren
 							}
-
-							// Value is the same as in widget data but is was
-							// modified back in time. Roll back dimensions when restoring
-							// default src.
-							else if ( srcChanged ) {
-								// Re-enable width and height fields.
-								toggleDimensions( true );
-
-								// Restore width field with cached width.
-								widthField.setValue( domWidth );
-
-								// Restore height field with cached height.
-								heightField.setValue( domHeight );
-
-								// Src equals default one back again.
-								srcChanged = false;
-							}
-
-							// Value is the same as in widget data and it hadn't
-							// been modified.
-							else {
-								// Re-enable width and height fields.
-								toggleDimensions( true );
-							}
-						},
-						setup: function( widget ) {
-							this.setValue( widget.data.src );
-						},
-						commit: function( widget ) {
-							widget.setData( 'src', this.getValue() );
-						},
-						validate: CKEDITOR.dialog.validate.notEmpty( lang.urlMissing )
+						]
 					},
 					{
 						id: 'alt',
@@ -436,6 +469,12 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 								type: 'html',
 								style: lockResetStyle,
 								onLoad: onLoadLockReset,
+								setup: function( widget ) {
+									toggleLockRatio( widget.data.lock );
+								},
+								commit: function( widget ) {
+									widget.setData( 'lock', lockRatio );
+								},
 								html: lockResetHtml
 							}
 						]
@@ -472,6 +511,28 @@ CKEDITOR.dialog.add( 'image2', function( editor ) {
 						commit: function( widget ) {
 							widget.setData( 'hasCaption', this.getValue() );
 						}
+					}
+				]
+			},
+			{
+				id: 'Upload',
+				hidden: true,
+				filebrowser: 'uploadButton',
+				label: lang.uploadTab,
+				elements: [
+					{
+						type: 'file',
+						id: 'upload',
+						label: lang.btnUpload,
+						style: 'height:40px',
+						size: 38
+					},
+					{
+						type: 'fileButton',
+						id: 'uploadButton',
+						filebrowser: 'info:src',
+						label: lang.btnUpload,
+						'for': [ 'Upload', 'upload' ]
 					}
 				]
 			}

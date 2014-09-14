@@ -1,5 +1,5 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -250,9 +250,16 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 	},
 
 	/**
-	 * @todo
+	 * Appends a `<br>` filler element to this element if the filler is not present already.
+	 * By default filler is appended only if {@link CKEDITOR.env#needsBrFiller} is `true`,
+	 * however when `force` is set to `true` filler will be appended regardless of the environment.
+	 *
+	 * @param {Boolean} [force] Append filler regardless of the environment.
 	 */
-	appendBogus: function() {
+	appendBogus: function( force ) {
+		if ( !force && !( CKEDITOR.env.needsBrFiller || CKEDITOR.env.opera ) )
+			return;
+
 		var lastChild = this.getLast();
 
 		// Ignore empty/spaces text.
@@ -329,7 +336,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 	 * @param  {Boolean} defer Whether to asynchronously defer the
 	 * execution by 100 ms.
 	 */
-	focus: (function() {
+	focus: ( function() {
 		function exec() {
 			// IE throws error if the element is not visible.
 			try {
@@ -343,7 +350,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 			else
 				exec.call( this );
 		};
-	})(),
+	} )(),
 
 	/**
 	 * Gets the inner HTML of this element.
@@ -480,7 +487,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 	 * @param {String} name The attribute name.
 	 * @returns {String} The attribute value or null if not defined.
 	 */
-	getAttribute: (function() {
+	getAttribute: ( function() {
 		var standard = function( name ) {
 				return this.$.getAttribute( name, 2 );
 			};
@@ -539,7 +546,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 			};
 		} else
 			return standard;
-	})(),
+	} )(),
 
 	/**
 	 * Gets the nodes list containing all children of this element.
@@ -708,7 +715,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 
 		return ( this.getName = function() {
 			return nodeName;
-		})();
+		} )();
 	},
 
 	/**
@@ -881,9 +888,9 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 		if ( isVisible && ( CKEDITOR.env.webkit || CKEDITOR.env.opera ) ) {
 			elementWindow = this.getWindow();
 
-			if ( !elementWindow.equals( CKEDITOR.document.getWindow() ) && ( elementWindowFrame = elementWindow.$.frameElement ) ) {
+			if ( !elementWindow.equals( CKEDITOR.document.getWindow() ) && ( elementWindowFrame = elementWindow.$.frameElement ) )
 				isVisible = new CKEDITOR.dom.element( elementWindowFrame ).isVisible();
-			}
+
 		}
 
 		return !!isVisible;
@@ -905,9 +912,9 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 			if ( child.type == CKEDITOR.NODE_ELEMENT && child.data( 'cke-bookmark' ) )
 				continue;
 
-			if ( child.type == CKEDITOR.NODE_ELEMENT && !child.isEmptyInlineRemoveable() || child.type == CKEDITOR.NODE_TEXT && CKEDITOR.tools.trim( child.getText() ) ) {
+			if ( child.type == CKEDITOR.NODE_ELEMENT && !child.isEmptyInlineRemoveable() || child.type == CKEDITOR.NODE_TEXT && CKEDITOR.tools.trim( child.getText() ) )
 				return false;
-			}
+
 		}
 		return true;
 	},
@@ -960,7 +967,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 				attrsNum = attrs.length;
 
 			// The _moz_dirty attribute might get into the element after pasting (#5455)
-			var execludeAttrs = { 'data-cke-expando':1,_moz_dirty:1 };
+			var execludeAttrs = { 'data-cke-expando': 1, _moz_dirty: 1 };
 
 			return attrsNum > 0 && ( attrsNum > 2 || !execludeAttrs[ attrs[ 0 ].nodeName ] || ( attrsNum == 2 && !execludeAttrs[ attrs[ 1 ].nodeName ] ) );
 		},
@@ -972,7 +979,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 	 * @param {String} name The attribute name.
 	 * @returns {Boolean} `true` if the specified attribute is defined.
 	 */
-	hasAttribute: (function() {
+	hasAttribute: ( function() {
 		function standard( name ) {
 			var $attr = this.$.attributes.getNamedItem( name );
 			return !!( $attr && $attr.specified );
@@ -988,7 +995,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 
 			return standard.call( this, name );
 		} : standard;
-	})(),
+	} )(),
 
 	/**
 	 * Hides this element (sets `display: none`).
@@ -1035,7 +1042,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 	 * @method
 	 * @param {Boolean} [inlineOnly=true] Allow only inline elements to be merged.
 	 */
-	mergeSiblings: (function() {
+	mergeSiblings: ( function() {
 		function mergeElements( element, sibling, isNext ) {
 			if ( sibling && sibling.type == CKEDITOR.NODE_ELEMENT ) {
 				// Jumping over bookmark nodes and empty inline elements, e.g. <b><i></i></b>,
@@ -1077,7 +1084,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 			mergeElements( this, this.getNext(), true );
 			mergeElements( this, this.getPrevious() );
 		};
-	})(),
+	} )(),
 
 	/**
 	 * Shows this element (displays it).
@@ -1086,10 +1093,10 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 	 *		element.show();
 	 */
 	show: function() {
-		this.setStyles({
+		this.setStyles( {
 			display: '',
 			visibility: ''
-		});
+		} );
 	},
 
 	/**
@@ -1104,7 +1111,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 	 * @param {String} value The value to be set to the attribute.
 	 * @returns {CKEDITOR.dom.element} This element instance.
 	 */
-	setAttribute: (function() {
+	setAttribute: ( function() {
 		var standard = function( name, value ) {
 				this.$.setAttribute( name, value );
 				return this;
@@ -1138,7 +1145,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 			};
 		} else
 			return standard;
-	})(),
+	} )(),
 
 	/**
 	 * Sets the value of several element attributes.
@@ -1182,7 +1189,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 	 * @method
 	 * @param {String} name The attribute name.
 	 */
-	removeAttribute: (function() {
+	removeAttribute: ( function() {
 		var standard = function( name ) {
 				this.$.removeAttribute( name );
 			};
@@ -1199,7 +1206,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 			};
 		} else
 			return standard;
-	})(),
+	} )(),
 
 	/**
 	 * Removes all element's attributes or just given ones.
@@ -1554,9 +1561,8 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 		// 2. Otherwise be smart to scroll only the minimum amount;
 		// 3. Never cut at the top;
 		// 4. DO NOT scroll when already visible.
-		if ( lt.y < 0 || br.y > 0 ) {
+		if ( lt.y < 0 || br.y > 0 )
 			scrollBy( 0, alignToTop === true ? lt.y : alignToTop === false ? br.y : lt.y < 0 ? lt.y : br.y );
-		}
 
 		if ( hscroll && ( lt.x < 0 || br.x > 0 ) )
 			scrollBy( lt.x < 0 ? lt.x : br.x, 0 );
@@ -1710,7 +1716,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 	 * @param {Array/Number} indices The child index or array of child indices under the node.
 	 * @returns {CKEDITOR.dom.node} The specified DOM child under the current node. Null if child does not exist.
 	 */
-	getChild: (function() {
+	getChild: ( function() {
 		function getChild( rawNode, index ) {
 			var childNodes = rawNode.childNodes;
 
@@ -1730,7 +1736,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 
 			return rawNode ? new CKEDITOR.dom.node( rawNode ) : null;
 		};
-	})(),
+	} )(),
 
 	/**
 	 * Gets number of element's children.
@@ -1749,7 +1755,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 			// Cancel the browser context menu.
 			if ( !event.data.getTarget().hasClass( 'cke_enable_context_menu' ) )
 				event.data.preventDefault();
-		});
+		} );
 	},
 
 	/**
@@ -1868,8 +1874,54 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 		removeTmpId();
 
 		return found ? new CKEDITOR.dom.element( found ) : null;
+	},
+
+	/**
+	 * Traverse the DOM of this element (inclusive), executing a callback for
+	 * each node.
+	 *
+	 *		var element = CKEDITOR.dom.element.createFromHtml( '<div><p>foo<b>bar</b>bom</p></div>' );
+	 *		element.forEach( function( node ) {
+	 *			console.log( node );
+	 *		} );
+	 *		// Will log:
+	 *		// 1. <div> element,
+	 *		// 2. <p> element,
+	 *		// 3. "foo" text node,
+	 *		// 4. <b> element,
+	 *		// 5. "bar" text node,
+	 *		// 6. "bom" text node.
+	 *
+	 * @since 4.3
+	 * @param {Function} callback Function to be executed on every node.
+	 * If `callback` returns `false` descendants of the node will be ignored.
+	 * @param {CKEDITOR.htmlParser.node} callback.node Node passed as argument.
+	 * @param {Number} [type] If specified `callback` will be executed only on
+	 * nodes of this type.
+	 * @param {Boolean} [skipRoot] Don't execute `callback` on this element.
+	 */
+	forEach: function( callback, type, skipRoot ) {
+		if ( !skipRoot && ( !type || this.type == type ) )
+				var ret = callback( this );
+
+		// Do not filter children if callback returned false.
+		if ( ret === false )
+			return;
+
+		var children = this.getChildren(),
+			node,
+			i = 0;
+
+		// We do not cache the size, because the live list of nodes may be changed by the callback.
+		for ( ; i < children.count(); i++ ) {
+			node = children.getItem( i );
+			if ( node.type == CKEDITOR.NODE_ELEMENT )
+				node.forEach( callback, type );
+			else if ( !type || node.type == type )
+				callback( node );
+		}
 	}
-});
+} );
 
 	function createTmpId( element ) {
 		var hadId = true;
@@ -1906,7 +1958,7 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 
 			if ( components ) {
 				for ( var j = 0 ; j < components.length ; j++ )
-					styles.push( [ style, sides[ i ], components[j] ].join( '-' ) );
+					styles.push( [ style, sides[ i ], components[ j ] ].join( '-' ) );
 			}
 			else
 				styles.push( [ style, sides[ i ] ].join( '-' ) );
@@ -1952,4 +2004,4 @@ CKEDITOR.tools.extend( CKEDITOR.dom.element.prototype, {
 
 		return size;
 	};
-})();
+} )();

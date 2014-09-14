@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+# Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
 # For licensing, see LICENSE.md or http://ckeditor.com/license
 
 # Build CKEditor using the default settings (and build.js)
@@ -9,7 +9,7 @@ set -e
 echo "CKBuilder - Builds a release version of ckeditor-dev."
 echo ""
 
-CKBUILDER_VERSION="1.7.1"
+CKBUILDER_VERSION="1.7.2"
 CKBUILDER_URL="http://download.cksource.com/CKBuilder/$CKBUILDER_VERSION/ckbuilder.jar"
 
 PROGNAME=$(basename $0)

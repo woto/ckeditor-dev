@@ -1,5 +1,5 @@
 ﻿/**
- * @license Copyright (c) 2003-2013, CKSource - Frederico Knabben. All rights reserved.
+ * @license Copyright (c) 2003-2014, CKSource - Frederico Knabben. All rights reserved.
  * For licensing, see LICENSE.md or http://ckeditor.com/license
  */
 
@@ -20,6 +20,7 @@
 CKEDITOR.lang[ 'pl' ] = {
 	// ARIA description.
 	editor: 'Edytor tekstu sformatowanego',
+	editorPanel: 'Panel edytora tekstu sformatowanego',
 
 	// Common messages and labels.
 	common: {
